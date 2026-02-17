@@ -1,0 +1,5 @@
+{
+  "kitchen": "Prefer south-east placement",
+  "master_bedroom": "Prefer south-west placement",
+  "entrance": "Prefer north-east or east"
+}
