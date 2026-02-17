@@ -1,0 +1,5 @@
+{
+  "wall": {"material": "AAC blocks", "u_value": 0.35},
+  "roof": {"material": "insulated slab", "u_value": 0.28},
+  "window": {"material": "double-glazed", "u_value": 1.9}
+}
