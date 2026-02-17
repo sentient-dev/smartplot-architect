@@ -9,10 +9,12 @@ from src.config.settings import settings
 
 def configure_logging() -> None:
     """Configure application logging once."""
-    if logging.getLogger().handlers:
-        return
+    root_logger = logging.getLogger()
+    level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    root_logger.setLevel(level)
 
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level.upper(), logging.INFO),
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
+    if not root_logger.handlers:
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        )
