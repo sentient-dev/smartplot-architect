@@ -120,9 +120,8 @@ def get_result(job_id: UUID) -> DesignResult:
 def regenerate(job_id: UUID, request: RegenerateRequest) -> dict:
     with _jobs_lock:
         existing = _jobs.get(job_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Job not found")
-    with _jobs_lock:
+        if not existing:
+            raise HTTPException(status_code=404, detail="Job not found")
         existing.request = existing.request.model_copy(update={"requirements": request.requirements})
         existing.error = None
         existing.result = None
@@ -154,4 +153,10 @@ def get_validation_report(job_id: UUID) -> ValidationReport:
 
 @app.on_event("shutdown")
 def shutdown_executor() -> None:
-    _executor.shutdown(wait=False)
+    _executor.shutdown(wait=True)
+
+
+def clear_jobs_for_testing() -> None:
+    """Test utility to clear in-memory jobs safely."""
+    with _jobs_lock:
+        _jobs.clear()

@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.orchestrator import OrchestratorAgent
-from src.models.schemas import AnalyzePlotRequest, JobRecord, JobStatus, RegenerateRequest
+from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
 
@@ -34,8 +34,7 @@ def _sample_request() -> AnalyzePlotRequest:
 
 class CriticalComponentTests(unittest.TestCase):
     def setUp(self) -> None:
-        with app_main._jobs_lock:
-            app_main._jobs.clear()
+        app_main.clear_jobs_for_testing()
 
     def test_environment_profile_has_required_sections(self) -> None:
         service = EnvironmentalService()
@@ -69,26 +68,22 @@ class CriticalComponentTests(unittest.TestCase):
 
         self.assertEqual(response["status"], "pending")
         submit_pipeline.assert_called_once_with(job_id)
-        with app_main._jobs_lock:
-            self.assertIn(job_id, app_main._jobs)
+        self.assertEqual(app_main.get_status(job_id)["status"], "pending")
 
     @patch("api.main._submit_pipeline")
     def test_regenerate_resets_job_to_pending_and_requeues(self, submit_pipeline) -> None:
-        job = JobRecord(request=_sample_request())
-        with app_main._jobs_lock:
-            app_main._jobs[job.job_id] = job
-            app_main._jobs[job.job_id].status = JobStatus.completed
-            app_main._jobs[job.job_id].result = None
+        created = app_main.analyze_plot(_sample_request())
+        job_id = UUID(created["job_id"])
+        submit_pipeline.reset_mock()
 
         response = app_main.regenerate(
-            job.job_id,
+            job_id,
             RegenerateRequest(requirements=_sample_request().requirements),
         )
 
         self.assertEqual(response["status"], "pending")
-        submit_pipeline.assert_called_once_with(job.job_id)
-        with app_main._jobs_lock:
-            self.assertEqual(app_main._jobs[job.job_id].status, JobStatus.pending)
+        submit_pipeline.assert_called_once_with(job_id)
+        self.assertEqual(app_main.get_status(job_id)["status"], "pending")
 
 
 if __name__ == "__main__":
