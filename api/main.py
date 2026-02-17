@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 
 from src.agents.orchestrator import OrchestratorAgent
 from src.config.settings import settings
-from src.models.schemas import AnalyzePlotRequest, DesignResult, JobRecord, JobStatus, RegenerateRequest, ValidationReport
+from src.models.schemas import AnalyzePlotRequest, Coordinates, DesignResult, JobRecord, JobStatus, LocationInput, RegenerateRequest, ValidationReport
 from src.processors.design_generator import DesignProcessor
 from src.services.environmental import EnvironmentalService, ExternalServiceError
 from src.utils.logging import configure_logging
@@ -91,26 +91,7 @@ def regenerate(job_id: UUID, request: RegenerateRequest) -> dict:
 def get_sun_path(lat: float, lon: float) -> dict:
     try:
         data = _environmental.fetch_environmental_profile(
-            AnalyzePlotRequest.model_validate(
-                {
-                    "location": {"address": "ad-hoc", "coordinates": {"lat": lat, "lon": lon}},
-                    "plot": {
-                        "dimensions": {"length": 1, "width": 1, "unit": "feet"},
-                        "orientation": "north",
-                        "road_facing": "east",
-                    },
-                    "requirements": {
-                        "bedrooms": 1,
-                        "bathrooms": 1,
-                        "kitchen": 1,
-                        "living_room": 1,
-                        "dining_room": 1,
-                        "budget": "basic",
-                        "style": "modern",
-                        "apply_vastu": False,
-                    },
-                }
-            ).location
+            LocationInput(address="ad-hoc", coordinates=Coordinates(lat=lat, lon=lon))
         )
     except ExternalServiceError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

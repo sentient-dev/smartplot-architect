@@ -26,7 +26,15 @@ class DesignProcessor:
 
         summary = {
             "total_area": f"{area} sq {request.plot.dimensions.unit}",
-            "room_count": request.requirements.bedrooms + request.requirements.bathrooms + request.requirements.kitchen + request.requirements.living_room + request.requirements.dining_room,
+            "room_count": sum(
+                (
+                    request.requirements.bedrooms,
+                    request.requirements.bathrooms,
+                    request.requirements.kitchen,
+                    request.requirements.living_room,
+                    request.requirements.dining_room,
+                )
+            ),
             "optimization_score": round(sum(decision.score for decision in decisions) / max(len(decisions), 1), 2),
             "energy_efficiency": "A+" if validation_score >= 8.0 else "A",
             "vastu_compliance": 92 if request.requirements.apply_vastu else 0,

@@ -19,7 +19,8 @@ class ScientificValidator:
         structural_score = 9.0 if structural_match else 6.5
 
         sunlight_score = round(8.0 * orientation_match, 2)
-        avg = (sunlight_score + ventilation_score + structural_score) / 3
+        metric_scores = (sunlight_score, ventilation_score, structural_score)
+        avg = sum(metric_scores) / len(metric_scores)
 
         issues: list[str] = []
         if sunlight_score < 7.0:

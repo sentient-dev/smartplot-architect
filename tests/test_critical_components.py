@@ -33,7 +33,10 @@ class CriticalComponentTests(unittest.TestCase):
     def test_environment_profile_has_required_sections(self) -> None:
         service = EnvironmentalService()
         data = service.fetch_environmental_profile(_sample_request().location)
-        self.assertTrue({"geolocation", "elevation_m", "weather", "solar", "wind", "rainfall_mm"}.issubset(data.keys()))
+        expected_keys = ("geolocation", "elevation_m", "weather", "solar", "wind", "rainfall_mm")
+        for key in expected_keys:
+            with self.subTest(key=key):
+                self.assertIn(key, data)
 
 
     def test_orchestrator_returns_ranked_agent_decisions(self) -> None:
