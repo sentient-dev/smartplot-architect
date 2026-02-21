@@ -3,6 +3,7 @@ from unittest.mock import patch
 from uuid import UUID
 
 import api.main as app_main
+from src.agents.graph import DesignGraphState, build_design_graph, design_graph
 from src.agents.orchestrator import OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
@@ -84,6 +85,85 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertEqual(response["status"], "pending")
         submit_pipeline.assert_called_once_with(job_id)
         self.assertEqual(app_main.get_status(job_id)["status"], "pending")
+
+
+class LangGraphWorkflowTests(unittest.TestCase):
+    def test_design_graph_is_compiled(self) -> None:
+        from langgraph.graph.state import CompiledStateGraph
+
+        self.assertIsInstance(design_graph, CompiledStateGraph)
+
+    def test_build_design_graph_returns_new_compiled_graph(self) -> None:
+        from langgraph.graph.state import CompiledStateGraph
+
+        graph = build_design_graph()
+        self.assertIsInstance(graph, CompiledStateGraph)
+
+    def test_graph_produces_eight_decisions(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        self.assertEqual(len(final["decisions"]), 8)
+
+    def test_graph_decisions_are_ranked_descending(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        scores = [d.score for d in final["decisions"]]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_graph_decisions_contain_all_agent_names(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        agent_names = {d.agent for d in final["decisions"]}
+        expected = {
+            "architect", "meteorologist", "geologist", "structural_engineer",
+            "site_engineer", "vastu_expert", "interior_designer", "construction_builder",
+        }
+        self.assertEqual(agent_names, expected)
+
+    def test_orchestrator_uses_graph_internally(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        decisions = OrchestratorAgent().execute(req, env)
+        self.assertEqual(len(decisions), 8)
+        self.assertGreaterEqual(decisions[0].score, decisions[-1].score)
+
+    def test_vastu_skipped_when_disabled(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(
+            update={"requirements": req.requirements.model_copy(update={"apply_vastu": False})}
+        )
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
+        self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
+        self.assertIn("skipped", vastu.decision.lower())
 
 
 if __name__ == "__main__":
