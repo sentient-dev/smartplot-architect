@@ -14,17 +14,17 @@ from src.models.schemas import AnalyzePlotRequest, DesignDecision
 # Graph state
 # ---------------------------------------------------------------------------
 
-def _append_result(existing: list, new: list) -> list:
-    """Reducer that appends new agent results to the accumulated list."""
-    return existing + new
-
-
 class AgentResult(TypedDict):
     name: str
     decision: str
     reasoning: str
     score: float
     weight: float
+
+
+def _append_result(existing: list[AgentResult], new: list[AgentResult]) -> list[AgentResult]:
+    """Reducer that appends new agent results to the accumulated list."""
+    return existing + new
 
 
 class DesignGraphState(TypedDict):
@@ -49,7 +49,7 @@ def _make_result(name: str, decision: str, reasoning: str, score: float, weight:
 # ---------------------------------------------------------------------------
 
 def architect_node(state: DesignGraphState) -> dict:
-    preferred = state["environmental"]["solar"]["preferred_exposure"]
+    preferred = state["environmental"].get("solar", {}).get("preferred_exposure", "south")
     return {
         "agent_results": [
             _make_result(
@@ -64,7 +64,7 @@ def architect_node(state: DesignGraphState) -> dict:
 
 
 def meteorologist_node(state: DesignGraphState) -> dict:
-    direction = state["environmental"]["wind"]["prevailing_direction"]
+    direction = state["environmental"].get("wind", {}).get("prevailing_direction", "SW")
     return {
         "agent_results": [
             _make_result(
@@ -79,7 +79,7 @@ def meteorologist_node(state: DesignGraphState) -> dict:
 
 
 def geologist_node(state: DesignGraphState) -> dict:
-    elevation = state["environmental"]["elevation_m"]
+    elevation = state["environmental"].get("elevation_m", 0)
     return {
         "agent_results": [
             _make_result(
@@ -230,4 +230,8 @@ def build_design_graph() -> CompiledStateGraph:
 
 
 # Module-level compiled graph (singleton)
-design_graph = build_design_graph()
+try:
+    design_graph: CompiledStateGraph = build_design_graph()
+except Exception as exc:  # pragma: no cover - defensive initialization guard
+    raise RuntimeError("Failed to build design graph during module import") from exc
+

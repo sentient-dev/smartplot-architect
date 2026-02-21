@@ -161,7 +161,8 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "decisions": [],
         }
         final = design_graph.invoke(initial)
-        vastu = next(d for d in final["decisions"] if d.agent == "vastu_expert")
+        vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
+        self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
         self.assertIn("skipped", vastu.decision.lower())
 
 

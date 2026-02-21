@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.agents.graph import design_graph
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
+
+logger = logging.getLogger(__name__)
+
+
+class GraphExecutionError(RuntimeError):
+    """Raised when the LangGraph design workflow fails to execute."""
 
 
 class OrchestratorAgent:
@@ -16,5 +24,9 @@ class OrchestratorAgent:
             "agent_results": [],
             "decisions": [],
         }
-        final_state = design_graph.invoke(initial_state)
+        try:
+            final_state = design_graph.invoke(initial_state)
+        except Exception as exc:
+            logger.exception("LangGraph design workflow execution failed")
+            raise GraphExecutionError("Design workflow failed to execute") from exc
         return final_state["decisions"]
