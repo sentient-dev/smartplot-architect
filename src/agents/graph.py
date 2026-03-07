@@ -9,6 +9,9 @@ from langgraph.graph.state import CompiledStateGraph
 
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
+ELEVATION_LOW_THRESHOLD = 150.0
+ELEVATION_MID_THRESHOLD = 600.0
+
 
 # ---------------------------------------------------------------------------
 # Graph state
@@ -79,12 +82,12 @@ def meteorologist_node(state: DesignGraphState) -> dict:
 
 
 def _geologist_foundation_guidance(elevation: float) -> tuple[str, str]:
-    if elevation < 150:
+    if elevation < ELEVATION_LOW_THRESHOLD:
         return (
             f"Raised plinth foundation for low elevation site ({elevation}m)",
             "Low-lying terrain needs moisture and settlement safeguards",
         )
-    if elevation < 600:
+    if elevation < ELEVATION_MID_THRESHOLD:
         return (
             f"Reinforced strip footing for mid-elevation site ({elevation}m)",
             "Balanced soil pressure and drainage profile support standard reinforcement",

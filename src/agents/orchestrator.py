@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
 
-from src.agents.graph import design_graph
+from src.agents.graph import _geologist_foundation_guidance, design_graph
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 logger = logging.getLogger(__name__)
@@ -90,15 +90,7 @@ class GeologistAgent(BaseAgent):
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("elevation_m",))
         elevation = environmental["elevation_m"]
-        if elevation < 150:
-            decision = f"Raised plinth foundation for low elevation site ({elevation}m)"
-            reasoning = "Low-lying terrain needs moisture and settlement safeguards"
-        elif elevation < 600:
-            decision = f"Reinforced strip footing for mid-elevation site ({elevation}m)"
-            reasoning = "Balanced soil pressure and drainage profile support standard reinforcement"
-        else:
-            decision = f"Stepped reinforced foundation for high elevation site ({elevation}m)"
-            reasoning = "Steeper terrain needs terrace-adaptive foundation stability"
+        decision, reasoning = _geologist_foundation_guidance(elevation)
         return self.result(
             decision,
             reasoning,
