@@ -74,7 +74,7 @@ class MeteorologistAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        self.require_environment(environmental, ("wind","))
+        self.require_environment(environmental, ("wind",))
         direction = environmental["wind"].get("prevailing_direction", "SW")
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
