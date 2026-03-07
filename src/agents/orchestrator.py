@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
 
+from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.graph import design_graph
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
@@ -157,28 +158,8 @@ class ConstructionBuilderAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("rainfall_mm", "weather"))
-        rainfall = environmental.get("rainfall_mm", 0.0)
-        avg_temp = environmental.get("weather", {}).get("average_temp_c", 24.0)
-        budget = payload.requirements.budget.lower()
-
-        if rainfall >= 1000:
-            envelope = "reinforced concrete + membrane waterproofing"
-        elif rainfall >= 800:
-            envelope = "damp-proofed masonry + anti-corrosion steel"
-        else:
-            envelope = "thermally rendered masonry"
-
-        thermal_spec = "high-albedo insulated roof" if avg_temp >= 25 else "standard insulated roof"
-        procurement = {
-            "premium": "BIM quantity takeoff with phased premium procurement",
-            "mid-range": "batch quantity takeoff with regional supplier sequencing",
-        }.get(budget, "value-engineered quantity takeoff with local supplier sequencing")
-
-        return self.result(
-            f"Construction package: {envelope}; {thermal_spec}; schedule: {procurement}",
-            "Climate-adaptive material scheduling produced deterministic construction-ready specifications",
-            8.3,
-        )
+        decision, reasoning, score = generate_construction_builder_output(payload, environmental)
+        return self.result(decision, reasoning, score)
 
 
 class GraphExecutionError(RuntimeError):

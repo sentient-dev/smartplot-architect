@@ -157,6 +157,18 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertIn("batch quantity takeoff", result.decision)
         self.assertIn("Climate-adaptive material scheduling", result.reasoning)
 
+    def test_construction_builder_agent_uses_thermal_render_for_low_rainfall(self) -> None:
+        req = _sample_request()
+        result = ConstructionBuilderAgent().run(
+            req,
+            {
+                "rainfall_mm": 500.0,
+                "weather": {"average_temp_c": 22.0},
+            },
+        )
+        self.assertIn("thermally rendered masonry", result.decision)
+        self.assertIn("standard insulated roof", result.decision)
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -256,6 +268,7 @@ class LangGraphWorkflowTests(unittest.TestCase):
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
         env["rainfall_mm"] = 1100.0
+        env["weather"]["average_temp_c"] = 26.0
         initial: DesignGraphState = {
             "payload": req,
             "environmental": env,
@@ -266,6 +279,8 @@ class LangGraphWorkflowTests(unittest.TestCase):
         construction = next((d for d in final["decisions"] if d.agent == "construction_builder"), None)
         self.assertIsNotNone(construction, "Expected a decision from 'construction_builder' agent")
         self.assertIn("reinforced concrete", construction.decision.lower())
+        self.assertIn("high-albedo insulated roof", construction.decision.lower())
+        self.assertIn("batch quantity takeoff", construction.decision.lower())
 
     def test_vastu_skipped_when_disabled(self) -> None:
         req = _sample_request()

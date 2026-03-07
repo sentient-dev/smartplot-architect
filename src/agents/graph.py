@@ -7,6 +7,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from src.agents.construction_builder import generate_construction_builder_output
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 
@@ -163,30 +164,15 @@ def interior_designer_node(state: DesignGraphState) -> dict:
 
 
 def construction_builder_node(state: DesignGraphState) -> dict:
-    rainfall = state["environmental"].get("rainfall_mm", 0.0)
-    avg_temp = state["environmental"].get("weather", {}).get("average_temp_c", 24.0)
-    budget = state["payload"].requirements.budget.lower()
-
-    if rainfall >= 1000:
-        envelope = "reinforced concrete + membrane waterproofing"
-    elif rainfall >= 800:
-        envelope = "damp-proofed masonry + anti-corrosion steel"
-    else:
-        envelope = "thermally rendered masonry"
-
-    thermal_spec = "high-albedo insulated roof" if avg_temp >= 25 else "standard insulated roof"
-    procurement = {
-        "premium": "BIM quantity takeoff with phased premium procurement",
-        "mid-range": "batch quantity takeoff with regional supplier sequencing",
-    }.get(budget, "value-engineered quantity takeoff with local supplier sequencing")
+    decision, reasoning, score = generate_construction_builder_output(state["payload"], state["environmental"])
 
     return {
         "agent_results": [
             _make_result(
                 "construction_builder",
-                f"Construction package: {envelope}; {thermal_spec}; schedule: {procurement}",
-                "Climate-adaptive material scheduling produced deterministic construction-ready specifications",
-                8.3,
+                decision,
+                reasoning,
+                score,
                 0.9,
             )
         ]
