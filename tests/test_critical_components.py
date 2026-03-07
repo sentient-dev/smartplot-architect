@@ -151,7 +151,8 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertIsInstance(report.compliant, bool)
 
     def test_site_engineer_uses_road_facing_for_access_logic(self) -> None:
-        req = _sample_request().model_copy(update={"plot": _sample_request().plot.model_copy(update={"road_facing": " East "})})
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " East "})})
         result = SiteEngineerAgent().run(req, {})
         self.assertEqual(result.name, "site_engineer")
         self.assertEqual(result.weight, 0.85)
@@ -238,7 +239,8 @@ class LangGraphWorkflowTests(unittest.TestCase):
         self.assertEqual(agent_names, expected)
 
     def test_graph_site_engineer_decision_reflects_road_facing(self) -> None:
-        req = _sample_request().model_copy(update={"plot": _sample_request().plot.model_copy(update={"road_facing": "west"})})
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": "west"})})
         env = EnvironmentalService().fetch_environmental_profile(req.location)
         initial: DesignGraphState = {
             "payload": req,
