@@ -259,6 +259,19 @@ class LangGraphWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
             design_graph.invoke(initial)
 
+    def test_graph_requires_meteorologist_wind_section(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env.pop("wind")
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "meteorologist: wind"):
+            design_graph.invoke(initial)
+
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
