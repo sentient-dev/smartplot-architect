@@ -31,11 +31,11 @@ class BaseAgent(ABC):
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
-        if cls is BaseAgent:
-            return
         if not isinstance(cls.name, str) or not cls.name:
             raise ValueError("Agent subclasses must define a non-empty string 'name'")
-        if not isinstance(cls.weight, (int, float)) or not 0.0 <= cls.weight <= 1.0:
+        if not isinstance(cls.weight, (int, float)):
+            raise ValueError("Agent subclasses must define 'weight' between 0.0 and 1.0")
+        if not 0.0 <= cls.weight <= 1.0:
             raise ValueError("Agent subclasses must define 'weight' between 0.0 and 1.0")
 
     def require_environment(self, environmental: dict, required_keys: tuple[str, ...]) -> None:

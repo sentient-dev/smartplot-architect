@@ -65,11 +65,62 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertEqual(result.weight, 0.6)
         self.assertEqual(result.score, 8.0)
 
+    def test_base_agent_accepts_weight_boundaries(self) -> None:
+        class LowerBoundaryAgent(BaseAgent):
+            name = "lower-boundary"
+            weight = 0.0
+
+            def run(self, payload, environmental):
+                return self.result("decision", "reasoning", 7.0)
+
+        class UpperBoundaryAgent(BaseAgent):
+            name = "upper-boundary"
+            weight = 1.0
+
+            def run(self, payload, environmental):
+                return self.result("decision", "reasoning", 7.0)
+
+        self.assertEqual(LowerBoundaryAgent().weight, 0.0)
+        self.assertEqual(UpperBoundaryAgent().weight, 1.0)
+
     def test_base_agent_validates_subclass_weight(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "weight"):
             class InvalidWeightAgent(BaseAgent):
                 name = "invalid"
                 weight = 1.1
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaisesRegex(ValueError, "weight"):
+            class InvalidNegativeWeightAgent(BaseAgent):
+                name = "invalid-negative"
+                weight = -0.1
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaisesRegex(ValueError, "weight"):
+            class InvalidNonNumericWeightAgent(BaseAgent):
+                name = "invalid-type"
+                weight = "heavy"
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+    def test_base_agent_validates_subclass_name(self) -> None:
+        with self.assertRaisesRegex(ValueError, "name"):
+            class InvalidEmptyNameAgent(BaseAgent):
+                name = ""
+                weight = 0.8
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaisesRegex(ValueError, "name"):
+            class InvalidNonStringNameAgent(BaseAgent):
+                name = 123
+                weight = 0.8
 
                 def run(self, payload, environmental):
                     return self.result("decision", "reasoning", 7.0)
@@ -85,6 +136,9 @@ class CriticalComponentTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             EnvAwareAgent().run(_sample_request(), {"solar": {}})
+
+        result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
+        self.assertEqual(result.name, "env-aware")
 
 
     def test_scientific_validator_produces_report(self) -> None:
