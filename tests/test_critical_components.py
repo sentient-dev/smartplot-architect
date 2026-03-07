@@ -11,6 +11,7 @@ from src.agents.orchestrator import (
     MeteorologistAgent,
     OrchestratorAgent,
 )
+from src.agents.orchestrator import ArchitectAgent, BaseAgent, MeteorologistAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
