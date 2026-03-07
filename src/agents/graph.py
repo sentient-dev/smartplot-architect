@@ -49,7 +49,7 @@ def _make_result(name: str, decision: str, reasoning: str, score: float, weight:
 # ---------------------------------------------------------------------------
 
 def architect_node(state: DesignGraphState) -> dict:
-    preferred = state["environmental"].get("solar", {}).get("preferred_exposure", "south")
+    preferred = state["environmental"]["solar"]["preferred_exposure"]
     return {
         "agent_results": [
             _make_result(
@@ -234,4 +234,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-
