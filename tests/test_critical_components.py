@@ -154,7 +154,7 @@ class CriticalComponentTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             ArchitectAgent().run(_sample_request(), {})
 
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(KeyError, "preferred_exposure"):
             ArchitectAgent().run(_sample_request(), {"solar": {}})
 
 
