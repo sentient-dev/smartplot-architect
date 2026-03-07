@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
@@ -16,11 +17,37 @@ class AgentResult:
     weight: float
 
 
-class BaseAgent:
+class BaseAgent(ABC):
+    """Foundation contract for all SmartPlot specialist agents.
+
+    Subclasses are expected to:
+    1. Override ``name`` and ``weight`` metadata.
+    2. Implement ``run`` with their domain-specific decision logic.
+    3. Use ``result`` to return consistently shaped outputs.
+    """
+
     name = "base"
     weight = 0.5
 
-    def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:  # pragma: no cover - abstract
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        if cls is BaseAgent:
+            return
+        if not isinstance(cls.name, str) or not cls.name:
+            raise ValueError("Agent subclasses must define a non-empty string 'name'")
+        if not isinstance(cls.weight, (int, float)) or not 0.0 <= cls.weight <= 1.0:
+            raise ValueError("Agent subclasses must define 'weight' between 0.0 and 1.0")
+
+    def require_environment(self, environmental: dict, required_keys: tuple[str, ...]) -> None:
+        missing = [key for key in required_keys if key not in environmental]
+        if missing:
+            raise KeyError(f"Missing environmental keys for {self.name}: {', '.join(missing)}")
+
+    def result(self, decision: str, reasoning: str, score: float) -> AgentResult:
+        return AgentResult(self.name, decision, reasoning, score, self.weight)
+
+    @abstractmethod
+    def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         raise NotImplementedError
 
 
@@ -29,8 +56,9 @@ class ArchitectAgent(BaseAgent):
     weight = 1.0
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        self.require_environment(environmental, ("solar",))
         preferred = environmental["solar"]["preferred_exposure"]
-        return AgentResult(self.name, f"Primary living spaces aligned to {preferred}", "Optimized for natural daylight", 8.5, self.weight)
+        return self.result(f"Primary living spaces aligned to {preferred}", "Optimized for natural daylight", 8.5)
 
 
 class MeteorologistAgent(BaseAgent):
@@ -38,8 +66,9 @@ class MeteorologistAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        self.require_environment(environmental, ("wind",))
         direction = environmental["wind"]["prevailing_direction"]
-        return AgentResult(self.name, f"Cross-ventilation windows oriented towards {direction}", "Uses prevailing wind data", 8.2, self.weight)
+        return self.result(f"Cross-ventilation windows oriented towards {direction}", "Uses prevailing wind data", 8.2)
 
 
 class GeologistAgent(BaseAgent):
@@ -47,8 +76,9 @@ class GeologistAgent(BaseAgent):
     weight = 0.95
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        self.require_environment(environmental, ("elevation_m",))
         elevation = environmental["elevation_m"]
-        return AgentResult(self.name, f"Foundation tuned for elevation {elevation}m", "Reduced moisture and settlement risks", 8.0, self.weight)
+        return self.result(f"Foundation tuned for elevation {elevation}m", "Reduced moisture and settlement risks", 8.0)
 
 
 class StructuralEngineerAgent(BaseAgent):
@@ -56,7 +86,7 @@ class StructuralEngineerAgent(BaseAgent):
     weight = 1.0
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        return AgentResult(self.name, "Load-bearing walls increased to 230mm", "Safety-first structure for regional conditions", 8.8, self.weight)
+        return self.result("Load-bearing walls increased to 230mm", "Safety-first structure for regional conditions", 8.8)
 
 
 class SiteEngineerAgent(BaseAgent):
@@ -64,7 +94,7 @@ class SiteEngineerAgent(BaseAgent):
     weight = 0.85
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        return AgentResult(self.name, f"Road-facing side set to {payload.plot.road_facing}", "Supports practical site access", 7.8, self.weight)
+        return self.result(f"Road-facing side set to {payload.plot.road_facing}", "Supports practical site access", 7.8)
 
 
 class VastuExpertAgent(BaseAgent):
@@ -73,8 +103,8 @@ class VastuExpertAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         if not payload.requirements.apply_vastu:
-            return AgentResult(self.name, "Vastu optional adjustments skipped", "User disabled vastu preferences", 7.0, self.weight)
-        return AgentResult(self.name, "Kitchen placed in south-east zone", "Follows vastu guidance where practical", 7.6, self.weight)
+            return self.result("Vastu optional adjustments skipped", "User disabled vastu preferences", 7.0)
+        return self.result("Kitchen placed in south-east zone", "Follows vastu guidance where practical", 7.6)
 
 
 class InteriorDesignerAgent(BaseAgent):
@@ -82,7 +112,7 @@ class InteriorDesignerAgent(BaseAgent):
     weight = 0.75
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        return AgentResult(self.name, "Circulation path minimized across common rooms", "Improves comfort and usable space", 8.1, self.weight)
+        return self.result("Circulation path minimized across common rooms", "Improves comfort and usable space", 8.1)
 
 
 class ConstructionBuilderAgent(BaseAgent):
@@ -90,7 +120,7 @@ class ConstructionBuilderAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        return AgentResult(self.name, "Material schedule generated with climate-adaptive specs", "Construction-ready deliverable generated", 8.3, self.weight)
+        return self.result("Material schedule generated with climate-adaptive specs", "Construction-ready deliverable generated", 8.3)
 
 
 class OrchestratorAgent:

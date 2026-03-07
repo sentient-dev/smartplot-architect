@@ -3,7 +3,7 @@ from unittest.mock import patch
 from uuid import UUID
 
 import api.main as app_main
-from src.agents.orchestrator import OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -51,6 +51,40 @@ class CriticalComponentTests(unittest.TestCase):
         decisions = OrchestratorAgent().execute(req, env)
         self.assertEqual(len(decisions), 8)
         self.assertGreaterEqual(decisions[0].score, decisions[-1].score)
+
+    def test_base_agent_result_uses_subclass_metadata(self) -> None:
+        class DummyAgent(BaseAgent):
+            name = "dummy"
+            weight = 0.6
+
+            def run(self, payload, environmental):
+                return self.result("test decision", "test reasoning", 8.0)
+
+        result = DummyAgent().run(_sample_request(), {})
+        self.assertEqual(result.name, "dummy")
+        self.assertEqual(result.weight, 0.6)
+        self.assertEqual(result.score, 8.0)
+
+    def test_base_agent_validates_subclass_weight(self) -> None:
+        with self.assertRaises(ValueError):
+            class InvalidWeightAgent(BaseAgent):
+                name = "invalid"
+                weight = 1.1
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+    def test_base_agent_environment_guard(self) -> None:
+        class EnvAwareAgent(BaseAgent):
+            name = "env-aware"
+            weight = 0.8
+
+            def run(self, payload, environmental):
+                self.require_environment(environmental, ("solar", "wind"))
+                return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaises(KeyError):
+            EnvAwareAgent().run(_sample_request(), {"solar": {}})
 
 
     def test_scientific_validator_produces_report(self) -> None:
