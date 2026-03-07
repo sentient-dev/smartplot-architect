@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, OrchestratorAgent, VastuExpertAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -141,6 +141,23 @@ class CriticalComponentTests(unittest.TestCase):
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
 
+    def test_vastu_expert_returns_special_result_when_disabled(self) -> None:
+        req = _sample_request().model_copy(
+            update={"requirements": _sample_request().requirements.model_copy(update={"apply_vastu": False})}
+        )
+        result = VastuExpertAgent().run(req, {})
+        self.assertEqual(result.name, "vastu_expert")
+        self.assertEqual(result.weight, 0.7)
+        self.assertEqual(result.score, 0.0)
+        self.assertIn("skipped", result.decision.lower())
+
+    def test_vastu_expert_returns_tradition_adjustment_when_enabled(self) -> None:
+        result = VastuExpertAgent().run(_sample_request(), {})
+        self.assertEqual(result.name, "vastu_expert")
+        self.assertEqual(result.weight, 0.7)
+        self.assertIn("south-east", result.decision.lower())
+        self.assertIn("tradition-based", result.reasoning.lower())
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -252,6 +269,7 @@ class LangGraphWorkflowTests(unittest.TestCase):
         vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
         self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
         self.assertIn("skipped", vastu.decision.lower())
+        self.assertEqual(vastu.score, 0.0)
 
 
 if __name__ == "__main__":

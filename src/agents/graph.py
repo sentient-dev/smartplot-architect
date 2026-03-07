@@ -130,7 +130,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
                     "vastu_expert",
                     "Vastu optional adjustments skipped",
                     "User disabled vastu preferences",
-                    7.0,
+                    0.0,
                     0.7,
                 )
             ]
@@ -140,7 +140,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
             _make_result(
                 "vastu_expert",
                 "Kitchen placed in south-east zone",
-                "Follows vastu guidance where practical",
+                "Follows tradition-based adjustments where practical",
                 7.6,
                 0.7,
             )
@@ -234,4 +234,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-
