@@ -109,12 +109,19 @@ def structural_engineer_node(state: DesignGraphState) -> dict:
 
 def site_engineer_node(state: DesignGraphState) -> dict:
     road_facing = state["payload"].plot.road_facing
+    normalized = road_facing.strip().lower()
+    access_plan = {
+        "north": "Main construction gate on north edge with east-side unloading pocket",
+        "south": "Main construction gate on south edge with west-side unloading pocket",
+        "east": "Main construction gate on east edge with north-side unloading pocket",
+        "west": "Main construction gate on west edge with south-side unloading pocket",
+    }.get(normalized, f"Main construction gate aligned to {road_facing} road edge")
     return {
         "agent_results": [
             _make_result(
                 "site_engineer",
-                f"Road-facing side set to {road_facing}",
-                "Supports practical site access",
+                access_plan,
+                "Supports practical site access and safe material movement",
                 7.8,
                 0.85,
             )
@@ -234,4 +241,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-

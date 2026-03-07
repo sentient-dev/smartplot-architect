@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, OrchestratorAgent, SiteEngineerAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -150,6 +150,14 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertIn(report.energy_efficiency, {"A", "B"})
         self.assertIsInstance(report.compliant, bool)
 
+    def test_site_engineer_uses_road_facing_for_access_logic(self) -> None:
+        req = _sample_request().model_copy(update={"plot": _sample_request().plot.model_copy(update={"road_facing": " East "})})
+        result = SiteEngineerAgent().run(req, {})
+        self.assertEqual(result.name, "site_engineer")
+        self.assertEqual(result.weight, 0.85)
+        self.assertEqual(result.score, 7.8)
+        self.assertEqual(result.decision, "Main construction gate on east edge with north-side unloading pocket")
+
     @patch("api.main._submit_pipeline")
     def test_analyze_plot_enqueues_pipeline_and_returns_pending(self, submit_pipeline) -> None:
         response = app_main.analyze_plot(_sample_request())
@@ -228,6 +236,20 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "site_engineer", "vastu_expert", "interior_designer", "construction_builder",
         }
         self.assertEqual(agent_names, expected)
+
+    def test_graph_site_engineer_decision_reflects_road_facing(self) -> None:
+        req = _sample_request().model_copy(update={"plot": _sample_request().plot.model_copy(update={"road_facing": "west"})})
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
+        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
+        self.assertEqual(site.decision, "Main construction gate on west edge with south-side unloading pocket")
 
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()

@@ -74,7 +74,7 @@ class MeteorologistAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        self.require_environment(environmental, ("wind","))
+        self.require_environment(environmental, ("wind",))
         direction = environmental["wind"].get("prevailing_direction", "SW")
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
@@ -114,9 +114,16 @@ class SiteEngineerAgent(BaseAgent):
     weight = 0.85
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        road_facing = payload.plot.road_facing.strip().lower()
+        access_plan = {
+            "north": "Main construction gate on north edge with east-side unloading pocket",
+            "south": "Main construction gate on south edge with west-side unloading pocket",
+            "east": "Main construction gate on east edge with north-side unloading pocket",
+            "west": "Main construction gate on west edge with south-side unloading pocket",
+        }.get(road_facing, f"Main construction gate aligned to {payload.plot.road_facing} road edge")
         return self.result(
-            f"Road-facing side set to {payload.plot.road_facing}",
-            "Supports practical site access",
+            access_plan,
+            "Supports practical site access and safe material movement",
             7.8,
         )
 
