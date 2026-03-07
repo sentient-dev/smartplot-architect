@@ -159,6 +159,12 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertEqual(result.score, 7.8)
         self.assertEqual(result.decision, "Main construction gate on east edge with north-side unloading pocket")
 
+    def test_site_engineer_fallback_is_normalized(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " North-East "})})
+        result = SiteEngineerAgent().run(req, {})
+        self.assertEqual(result.decision, "Main construction gate aligned to north-east road edge")
+
     @patch("api.main._submit_pipeline")
     def test_analyze_plot_enqueues_pipeline_and_returns_pending(self, submit_pipeline) -> None:
         response = app_main.analyze_plot(_sample_request())
@@ -252,6 +258,21 @@ class LangGraphWorkflowTests(unittest.TestCase):
         site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
         self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
         self.assertEqual(site.decision, "Main construction gate on west edge with south-side unloading pocket")
+
+    def test_graph_site_engineer_fallback_is_normalized(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " NORTH-EAST "})})
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
+        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
+        self.assertEqual(site.decision, "Main construction gate aligned to north-east road edge")
 
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()

@@ -7,6 +7,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from src.agents.site_engineer import calculate_site_access_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 
@@ -108,14 +109,7 @@ def structural_engineer_node(state: DesignGraphState) -> dict:
 
 
 def site_engineer_node(state: DesignGraphState) -> dict:
-    road_facing = state["payload"].plot.road_facing
-    normalized = road_facing.strip().lower()
-    access_plan = {
-        "north": "Main construction gate on north edge with east-side unloading pocket",
-        "south": "Main construction gate on south edge with west-side unloading pocket",
-        "east": "Main construction gate on east edge with north-side unloading pocket",
-        "west": "Main construction gate on west edge with south-side unloading pocket",
-    }.get(normalized, f"Main construction gate aligned to {road_facing} road edge")
+    access_plan = calculate_site_access_decision(state["payload"].plot.road_facing)
     return {
         "agent_results": [
             _make_result(
