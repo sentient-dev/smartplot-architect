@@ -245,6 +245,29 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         self.assertEqual(agent_names, expected)
 
+    def test_graph_requires_architect_solar_preferred_exposure(self) -> None:
+        req = _sample_request()
+
+        with self.assertRaises(KeyError):
+            design_graph.invoke(
+                {
+                    "payload": req,
+                    "environmental": {},
+                    "agent_results": [],
+                    "decisions": [],
+                }
+            )
+
+        with self.assertRaisesRegex(KeyError, "preferred_exposure"):
+            design_graph.invoke(
+                {
+                    "payload": req,
+                    "environmental": {"solar": {}},
+                    "agent_results": [],
+                    "decisions": [],
+                }
+            )
+
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
