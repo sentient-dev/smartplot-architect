@@ -52,7 +52,7 @@ def _make_result(name: str, decision: str, reasoning: str, score: float, weight:
 # ---------------------------------------------------------------------------
 
 def architect_node(state: DesignGraphState) -> dict:
-    preferred = state["environmental"].get("solar", {}).get("preferred_exposure", "south")
+    preferred = state["environmental"]["solar"]["preferred_exposure"]
     return {
         "agent_results": [
             _make_result(
@@ -67,7 +67,13 @@ def architect_node(state: DesignGraphState) -> dict:
 
 
 def meteorologist_node(state: DesignGraphState) -> dict:
-    direction = state["environmental"].get("wind", {}).get("prevailing_direction", "SW")
+    environmental = state["environmental"]
+    if "wind" not in environmental:
+        raise KeyError("Missing environmental keys for meteorologist: wind")
+    wind = environmental["wind"]
+    if "prevailing_direction" not in wind:
+        raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
+    direction = wind["prevailing_direction"]
     return {
         "agent_results": [
             _make_result(
