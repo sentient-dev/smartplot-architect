@@ -154,6 +154,10 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertEqual(result.weight, 0.9)
         self.assertIn("NE", result.decision)
 
+    def test_meteorologist_agent_requires_prevailing_direction(self) -> None:
+        with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
+            MeteorologistAgent().run(_sample_request(), {"wind": {"avg_speed_mps": 4.2}})
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -241,6 +245,19 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "site_engineer", "vastu_expert", "interior_designer", "construction_builder",
         }
         self.assertEqual(agent_names, expected)
+
+    def test_graph_requires_meteorologist_prevailing_direction(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["wind"] = {"avg_speed_mps": env["wind"]["avg_speed_mps"]}
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
+            design_graph.invoke(initial)
 
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()

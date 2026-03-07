@@ -75,7 +75,10 @@ class MeteorologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("wind",))
-        direction = environmental["wind"]["prevailing_direction"]
+        wind = environmental["wind"]
+        if "prevailing_direction" not in wind:
+            raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
+        direction = wind["prevailing_direction"]
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
             "Uses prevailing wind data",

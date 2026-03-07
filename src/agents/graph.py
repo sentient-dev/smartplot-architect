@@ -64,7 +64,10 @@ def architect_node(state: DesignGraphState) -> dict:
 
 
 def meteorologist_node(state: DesignGraphState) -> dict:
-    direction = state["environmental"]["wind"]["prevailing_direction"]
+    wind = state["environmental"]["wind"]
+    if "prevailing_direction" not in wind:
+        raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
+    direction = wind["prevailing_direction"]
     return {
         "agent_results": [
             _make_result(
