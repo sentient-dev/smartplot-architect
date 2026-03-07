@@ -68,7 +68,7 @@ def _run_pipeline(job_id: UUID) -> None:
         logger.exception("Pipeline failed due to environmental data error")
         _mark_job_failed(job_id, str(exc))
     except GraphExecutionError as exc:
-        logger.exception("Pipeline failed due to agent orchestration error")
+        logger.error("Pipeline failed due to agent orchestration error: %s", exc)
         _mark_job_failed(job_id, str(exc))
     except Exception as exc:  # pragma: no cover - defensive branch
         logger.exception("Pipeline failed unexpectedly")
@@ -80,13 +80,7 @@ def _submit_pipeline(job_id: UUID) -> None:
         _executor.submit(_run_pipeline, job_id)
     except RuntimeError as exc:
         logger.exception("Failed to enqueue pipeline execution")
-        with _jobs_lock:
-            job = _jobs.get(job_id)
-            if not job:
-                return
-            job.status = JobStatus.failed
-            job.error = f"Failed to enqueue job: {exc}"
-            job.updated_at = datetime.now(UTC)
+        _mark_job_failed(job_id, f"Failed to enqueue job: {exc}")
 
 
 @app.post("/api/design/analyze-plot", response_model=dict)
