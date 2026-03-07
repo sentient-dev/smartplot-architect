@@ -142,8 +142,9 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertEqual(result.name, "env-aware")
 
     def test_vastu_expert_returns_special_result_when_disabled(self) -> None:
-        req = _sample_request().model_copy(
-            update={"requirements": _sample_request().requirements.model_copy(update={"apply_vastu": False})}
+        base_req = _sample_request()
+        req = base_req.model_copy(
+            update={"requirements": base_req.requirements.model_copy(update={"apply_vastu": False})}
         )
         result = VastuExpertAgent().run(req, {})
         self.assertEqual(result.name, "vastu_expert")
