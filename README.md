@@ -10,6 +10,13 @@ Production-oriented starter implementation for **VastuVision AI**, a multi-agent
 - Structured logging and typed request/response models
 - Seed knowledge-base files for vastu rules, materials, and building-code minimums
 
+## Recommended agentic framework
+For this project, **LangGraph** is the best fit for agent orchestration.
+
+- It models this system's multi-step workflow as an explicit graph (environmental analysis → specialist agents → validation → outputs).
+- It supports durable state, retries, and human-in-the-loop checkpoints, which are useful for long-running design jobs.
+- It keeps agent coordination deterministic while still allowing LangChain components for prompt/tool integrations.
+
 ## Project layout
 - `/api/main.py`: FastAPI application entrypoint
 - `/src/agents`: Agent orchestration
