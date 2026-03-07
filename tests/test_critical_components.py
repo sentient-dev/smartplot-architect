@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, MeteorologistAgent, OrchestratorAgent
+from src.agents.orchestrator import ArchitectAgent, BaseAgent, MeteorologistAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -158,6 +158,22 @@ class CriticalComponentTests(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
             MeteorologistAgent().run(_sample_request(), {"wind": {"avg_speed_mps": 4.2}})
 
+    def test_architect_agent_uses_solar_preferred_exposure(self) -> None:
+        result = ArchitectAgent().run(
+            _sample_request(),
+            {"solar": {"preferred_exposure": "east"}},
+        )
+        self.assertEqual(result.name, "architect")
+        self.assertEqual(result.weight, 1.0)
+        self.assertIn("east", result.decision.lower())
+
+    def test_architect_agent_requires_solar_data(self) -> None:
+        with self.assertRaises(KeyError):
+            ArchitectAgent().run(_sample_request(), {})
+
+        with self.assertRaisesRegex(KeyError, "preferred_exposure"):
+            ArchitectAgent().run(_sample_request(), {"solar": {}})
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -271,6 +287,29 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(KeyError, "meteorologist: wind"):
             design_graph.invoke(initial)
+
+    def test_graph_requires_architect_solar_preferred_exposure(self) -> None:
+        req = _sample_request()
+
+        with self.assertRaises(KeyError):
+            design_graph.invoke(
+                {
+                    "payload": req,
+                    "environmental": {},
+                    "agent_results": [],
+                    "decisions": [],
+                }
+            )
+
+        with self.assertRaisesRegex(KeyError, "preferred_exposure"):
+            design_graph.invoke(
+                {
+                    "payload": req,
+                    "environmental": {"solar": {}},
+                    "agent_results": [],
+                    "decisions": [],
+                }
+            )
 
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()
