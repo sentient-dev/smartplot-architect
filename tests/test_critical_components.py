@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, OrchestratorAgent, StructuralEngineerAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -141,6 +141,16 @@ class CriticalComponentTests(unittest.TestCase):
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
 
+    def test_structural_engineer_agent_safety_first_wall_logic(self) -> None:
+        req = _sample_request()
+        result = StructuralEngineerAgent().run(
+            req,
+            {"wind": {"avg_speed_mps": 7.6}, "rainfall_mm": 900, "elevation_m": 220},
+        )
+        self.assertEqual(result.name, "structural_engineer")
+        self.assertIn("300mm", result.decision)
+        self.assertGreaterEqual(result.score, 9.0)
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -228,6 +238,21 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "site_engineer", "vastu_expert", "interior_designer", "construction_builder",
         }
         self.assertEqual(agent_names, expected)
+
+    def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["rainfall_mm"] = 1700
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        structural = next((d for d in final["decisions"] if d.agent == "structural_engineer"), None)
+        self.assertIsNotNone(structural, "Expected a decision from 'structural_engineer' agent")
+        self.assertIn("300mm", structural.decision)
 
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()

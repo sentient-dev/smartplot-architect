@@ -94,13 +94,29 @@ def geologist_node(state: DesignGraphState) -> dict:
 
 
 def structural_engineer_node(state: DesignGraphState) -> dict:
+    wind_speed = state["environmental"].get("wind", {}).get("avg_speed_mps", 0.0)
+    rainfall = state["environmental"].get("rainfall_mm", 0.0)
+    elevation = state["environmental"].get("elevation_m", 0.0)
+
+    wall_thickness_mm = 230
+    if rainfall >= 1200 or wind_speed >= 6.0:
+        wall_thickness_mm = 250
+    if rainfall >= 1600 or wind_speed >= 7.5 or elevation >= 600:
+        wall_thickness_mm = 300
+
+    score = 8.6
+    if wall_thickness_mm == 250:
+        score = 8.9
+    elif wall_thickness_mm == 300:
+        score = 9.1
+
     return {
         "agent_results": [
             _make_result(
                 "structural_engineer",
-                "Load-bearing walls increased to 230mm",
-                "Safety-first structure for regional conditions",
-                8.8,
+                f"Load-bearing walls set to {wall_thickness_mm}mm for regional resilience",
+                f"Safety-first structure using wind {wind_speed:.2f}m/s, rainfall {rainfall:.2f}mm, elevation {elevation:.2f}m",
+                score,
                 1.0,
             )
         ]
@@ -234,4 +250,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-

@@ -74,7 +74,7 @@ class MeteorologistAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        self.require_environment(environmental, ("wind","))
+        self.require_environment(environmental, ("wind",))
         direction = environmental["wind"].get("prevailing_direction", "SW")
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
@@ -102,10 +102,27 @@ class StructuralEngineerAgent(BaseAgent):
     weight = 1.0
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        self.require_environment(environmental, ("wind", "rainfall_mm", "elevation_m"))
+        wind_speed = environmental["wind"].get("avg_speed_mps", 0.0)
+        rainfall = environmental.get("rainfall_mm", 0.0)
+        elevation = environmental.get("elevation_m", 0.0)
+
+        wall_thickness_mm = 230
+        if rainfall >= 1200 or wind_speed >= 6.0:
+            wall_thickness_mm = 250
+        if rainfall >= 1600 or wind_speed >= 7.5 or elevation >= 600:
+            wall_thickness_mm = 300
+
+        score = 8.6
+        if wall_thickness_mm == 250:
+            score = 8.9
+        elif wall_thickness_mm == 300:
+            score = 9.1
+
         return self.result(
-            "Load-bearing walls increased to 230mm",
-            "Safety-first structure for regional conditions",
-            8.8,
+            f"Load-bearing walls set to {wall_thickness_mm}mm for regional resilience",
+            f"Safety-first structure using wind {wind_speed:.2f}m/s, rainfall {rainfall:.2f}mm, elevation {elevation:.2f}m",
+            score,
         )
 
 
