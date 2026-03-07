@@ -27,6 +27,30 @@ For this project, **LangGraph** is the best fit for agent orchestration.
 - `/data`: Knowledge-base seed data
 - `/tests`: Critical component tests
 
+## Extending agents with `BaseAgent`
+`BaseAgent` defines the shared SmartPlot agent contract:
+- metadata (`name`, `weight`) used by orchestrator ranking
+- `run(payload, environmental)` interface for domain logic
+- helper methods `require_environment(...)` and `result(...)` for consistent outputs
+
+Example:
+```python
+from src.agents.orchestrator import BaseAgent
+
+class LightingAgent(BaseAgent):
+    name = "lighting"
+    weight = 0.8
+
+    def run(self, payload, environmental):
+        self.require_environment(environmental, ("solar",))
+        exposure = environmental["solar"]["preferred_exposure"]
+        return self.result(
+            f"Openings optimized for {exposure} daylight",
+            "Balances natural light and heat gain",
+            8.1,
+        )
+```
+
 ## Run locally
 ```bash
 python -m venv .venv

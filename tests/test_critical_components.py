@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -52,6 +52,94 @@ class CriticalComponentTests(unittest.TestCase):
         decisions = OrchestratorAgent().execute(req, env)
         self.assertEqual(len(decisions), 8)
         self.assertGreaterEqual(decisions[0].score, decisions[-1].score)
+
+    def test_base_agent_result_uses_subclass_metadata(self) -> None:
+        class DummyAgent(BaseAgent):
+            name = "dummy"
+            weight = 0.6
+
+            def run(self, payload, environmental):
+                return self.result("test decision", "test reasoning", 8.0)
+
+        result = DummyAgent().run(_sample_request(), {})
+        self.assertEqual(result.name, "dummy")
+        self.assertEqual(result.weight, 0.6)
+        self.assertEqual(result.score, 8.0)
+
+    def test_base_agent_accepts_weight_boundaries(self) -> None:
+        class LowerBoundaryAgent(BaseAgent):
+            name = "lower-boundary"
+            weight = 0.0
+
+            def run(self, payload, environmental):
+                return self.result("decision", "reasoning", 7.0)
+
+        class UpperBoundaryAgent(BaseAgent):
+            name = "upper-boundary"
+            weight = 1.0
+
+            def run(self, payload, environmental):
+                return self.result("decision", "reasoning", 7.0)
+
+        self.assertEqual(LowerBoundaryAgent().weight, 0.0)
+        self.assertEqual(UpperBoundaryAgent().weight, 1.0)
+
+    def test_base_agent_validates_subclass_weight(self) -> None:
+        with self.assertRaisesRegex(ValueError, "weight"):
+            class InvalidWeightAgent(BaseAgent):
+                name = "invalid"
+                weight = 1.1
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaisesRegex(ValueError, "weight"):
+            class InvalidNegativeWeightAgent(BaseAgent):
+                name = "invalid-negative"
+                weight = -0.1
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaisesRegex(ValueError, "weight"):
+            class InvalidNonNumericWeightAgent(BaseAgent):
+                name = "invalid-type"
+                weight = "heavy"
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+    def test_base_agent_validates_subclass_name(self) -> None:
+        with self.assertRaisesRegex(ValueError, "name"):
+            class InvalidEmptyNameAgent(BaseAgent):
+                name = ""
+                weight = 0.8
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaisesRegex(ValueError, "name"):
+            class InvalidNonStringNameAgent(BaseAgent):
+                name = 123
+                weight = 0.8
+
+                def run(self, payload, environmental):
+                    return self.result("decision", "reasoning", 7.0)
+
+    def test_base_agent_environment_guard(self) -> None:
+        class EnvAwareAgent(BaseAgent):
+            name = "env-aware"
+            weight = 0.8
+
+            def run(self, payload, environmental):
+                self.require_environment(environmental, ("solar", "wind"))
+                return self.result("decision", "reasoning", 7.0)
+
+        with self.assertRaises(KeyError):
+            EnvAwareAgent().run(_sample_request(), {"solar": {}})
+
+        result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
+        self.assertEqual(result.name, "env-aware")
 
 
     def test_scientific_validator_produces_report(self) -> None:
