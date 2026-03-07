@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
 
-from src.agents.graph import design_graph
+from src.agents.graph import design_graph, geologist_foundation_guidance
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 logger = logging.getLogger(__name__)
@@ -92,10 +92,11 @@ class GeologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("elevation_m",))
-        elevation = environmental.get("elevation_m", 0)
+        elevation = environmental["elevation_m"]
+        decision, reasoning = geologist_foundation_guidance(elevation)
         return self.result(
-            f"Foundation tuned for elevation {elevation}m",
-            "Reduced moisture and settlement risks",
+            decision,
+            reasoning,
             8.0,
         )
 

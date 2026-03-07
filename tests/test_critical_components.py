@@ -4,6 +4,13 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
+from src.agents.orchestrator import (
+    ArchitectAgent,
+    BaseAgent,
+    GeologistAgent,
+    MeteorologistAgent,
+    OrchestratorAgent,
+)
 from src.agents.orchestrator import ArchitectAgent, BaseAgent, MeteorologistAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
@@ -140,6 +147,23 @@ class CriticalComponentTests(unittest.TestCase):
 
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
+
+    def test_geologist_agent_requires_elevation(self) -> None:
+        with self.assertRaisesRegex(KeyError, "elevation_m"):
+            GeologistAgent().run(_sample_request(), {"solar": {}, "wind": {}})
+
+    def test_geologist_agent_elevation_logic_is_deterministic(self) -> None:
+        payload = _sample_request()
+        low = GeologistAgent().run(payload, {"elevation_m": 120})
+        mid = GeologistAgent().run(payload, {"elevation_m": 320})
+        high = GeologistAgent().run(payload, {"elevation_m": 720})
+
+        self.assertIn("Raised plinth foundation", low.decision)
+        self.assertIn("Reinforced strip footing", mid.decision)
+        self.assertIn("Stepped reinforced foundation", high.decision)
+        self.assertEqual(low.score, 8.0)
+        self.assertEqual(mid.score, 8.0)
+        self.assertEqual(high.score, 8.0)
 
     def test_meteorologist_agent_requires_wind_environment_key(self) -> None:
         with self.assertRaises(KeyError):
@@ -334,6 +358,19 @@ class LangGraphWorkflowTests(unittest.TestCase):
         vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
         self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
         self.assertIn("skipped", vastu.decision.lower())
+
+    def test_graph_requires_geologist_elevation_data(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env.pop("elevation_m")
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "elevation_m"):
+            design_graph.invoke(initial)
 
 
 if __name__ == "__main__":
