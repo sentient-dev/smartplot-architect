@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, InteriorDesignerAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -140,6 +140,15 @@ class CriticalComponentTests(unittest.TestCase):
 
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
+
+    def test_interior_designer_agent_outputs_deterministic_space_logic(self) -> None:
+        result = InteriorDesignerAgent().run(_sample_request(), {})
+        self.assertEqual(result.name, "interior_designer")
+        self.assertEqual(result.weight, 0.75)
+        self.assertEqual(result.score, 8.1)
+        self.assertIn("3BR/2BA", result.decision)
+        self.assertIn("comfort", result.decision.lower())
+        self.assertIn("circulation", result.decision.lower())
 
 
     def test_scientific_validator_produces_report(self) -> None:
