@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, ConstructionBuilderAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -141,6 +141,22 @@ class CriticalComponentTests(unittest.TestCase):
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
 
+    def test_construction_builder_agent_generates_climate_adaptive_package(self) -> None:
+        req = _sample_request()
+        result = ConstructionBuilderAgent().run(
+            req,
+            {
+                "rainfall_mm": 850.0,
+                "weather": {"average_temp_c": 26.0},
+            },
+        )
+        self.assertEqual(result.name, "construction_builder")
+        self.assertEqual(result.weight, 0.9)
+        self.assertIn("damp-proofed masonry", result.decision)
+        self.assertIn("high-albedo insulated roof", result.decision)
+        self.assertIn("batch quantity takeoff", result.decision)
+        self.assertIn("Climate-adaptive material scheduling", result.reasoning)
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -235,6 +251,21 @@ class LangGraphWorkflowTests(unittest.TestCase):
         decisions = OrchestratorAgent().execute(req, env)
         self.assertEqual(len(decisions), 8)
         self.assertGreaterEqual(decisions[0].score, decisions[-1].score)
+
+    def test_graph_construction_builder_decision_is_climate_adaptive(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["rainfall_mm"] = 1100.0
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        construction = next((d for d in final["decisions"] if d.agent == "construction_builder"), None)
+        self.assertIsNotNone(construction, "Expected a decision from 'construction_builder' agent")
+        self.assertIn("reinforced concrete", construction.decision.lower())
 
     def test_vastu_skipped_when_disabled(self) -> None:
         req = _sample_request()
