@@ -151,6 +151,15 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertIn("300mm", result.decision)
         self.assertGreaterEqual(result.score, 9.0)
 
+    def test_structural_engineer_agent_uses_elevation_threshold(self) -> None:
+        req = _sample_request()
+        result = StructuralEngineerAgent().run(
+            req,
+            {"wind": {"avg_speed_mps": 4.0}, "rainfall_mm": 900, "elevation_m": 650},
+        )
+        self.assertIn("300mm", result.decision)
+        self.assertGreaterEqual(result.score, 9.0)
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
