@@ -64,7 +64,7 @@ def architect_node(state: DesignGraphState) -> dict:
 
 
 def meteorologist_node(state: DesignGraphState) -> dict:
-    direction = state["environmental"].get("wind", {}).get("prevailing_direction", "SW")
+    direction = state["environmental"]["wind"]["prevailing_direction"]
     return {
         "agent_results": [
             _make_result(
@@ -234,4 +234,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-

@@ -4,7 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent
+from src.agents.orchestrator import BaseAgent, MeteorologistAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -140,6 +140,19 @@ class CriticalComponentTests(unittest.TestCase):
 
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
+
+    def test_meteorologist_agent_requires_wind_environment_key(self) -> None:
+        with self.assertRaises(KeyError):
+            MeteorologistAgent().run(_sample_request(), {"solar": {}})
+
+    def test_meteorologist_agent_uses_prevailing_wind_direction(self) -> None:
+        result = MeteorologistAgent().run(
+            _sample_request(),
+            {"wind": {"prevailing_direction": "NE"}},
+        )
+        self.assertEqual(result.name, "meteorologist")
+        self.assertEqual(result.weight, 0.9)
+        self.assertIn("NE", result.decision)
 
 
     def test_scientific_validator_produces_report(self) -> None:
