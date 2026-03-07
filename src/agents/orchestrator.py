@@ -61,7 +61,7 @@ class ArchitectAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("solar",))
-        preferred = environmental["solar"].get("preferred_exposure", "south")
+        preferred = environmental["solar"]["preferred_exposure"]
         return self.result(
             f"Primary living spaces aligned to {preferred}",
             "Optimized for natural daylight",
@@ -74,7 +74,7 @@ class MeteorologistAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        self.require_environment(environmental, ("wind","))
+        self.require_environment(environmental, ("wind",))
         direction = environmental["wind"].get("prevailing_direction", "SW")
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
