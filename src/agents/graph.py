@@ -81,7 +81,7 @@ def meteorologist_node(state: DesignGraphState) -> dict:
     }
 
 
-def _geologist_foundation_guidance(elevation: float) -> tuple[str, str]:
+def geologist_foundation_guidance(elevation: float) -> tuple[str, str]:
     if elevation < ELEVATION_LOW_THRESHOLD:
         return (
             f"Raised plinth foundation for low elevation site ({elevation}m)",
@@ -102,7 +102,7 @@ def geologist_node(state: DesignGraphState) -> dict:
     if "elevation_m" not in state["environmental"]:
         raise KeyError("Missing environmental keys for geologist: elevation_m")
     elevation = state["environmental"]["elevation_m"]
-    decision, reasoning = _geologist_foundation_guidance(elevation)
+    decision, reasoning = geologist_foundation_guidance(elevation)
     return {
         "agent_results": [
             _make_result(
