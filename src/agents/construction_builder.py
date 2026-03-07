@@ -19,8 +19,23 @@ _PROCUREMENT_BY_BUDGET = {
 
 
 def generate_construction_builder_output(payload: AnalyzePlotRequest, environmental: dict) -> tuple[str, str, float]:
-    rainfall = environmental.get("rainfall_mm", 0.0)
-    avg_temp = environmental.get("weather", {}).get("average_temp_c", 24.0)
+    try:
+        rainfall = float(environmental["rainfall_mm"])
+    except KeyError as exc:
+        raise KeyError("Missing required environmental key 'rainfall_mm' for construction builder output.") from exc
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid environmental value for 'rainfall_mm'; expected a numeric value.") from exc
+
+    try:
+        avg_temp = float(environmental["weather"]["average_temp_c"])
+    except KeyError as exc:
+        raise KeyError(
+            "Missing required environmental key 'weather.average_temp_c' for construction builder output."
+        ) from exc
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "Invalid environmental value for 'weather.average_temp_c'; expected a numeric value."
+        ) from exc
     budget = payload.requirements.budget.lower()
 
     if rainfall >= RAINFALL_THRESHOLD_HEAVY:

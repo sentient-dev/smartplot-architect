@@ -169,6 +169,20 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertIn("thermally rendered masonry", result.decision)
         self.assertIn("standard insulated roof", result.decision)
 
+    def test_construction_builder_agent_requires_weather_average_temperature(self) -> None:
+        with self.assertRaisesRegex(KeyError, "weather.average_temp_c"):
+            ConstructionBuilderAgent().run(
+                _sample_request(),
+                {"rainfall_mm": 850.0, "weather": {}},
+            )
+
+    def test_construction_builder_agent_rejects_non_numeric_weather_temperature(self) -> None:
+        with self.assertRaisesRegex(ValueError, "weather.average_temp_c"):
+            ConstructionBuilderAgent().run(
+                _sample_request(),
+                {"rainfall_mm": 850.0, "weather": {"average_temp_c": "hot"}},
+            )
+
 
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
@@ -281,6 +295,32 @@ class LangGraphWorkflowTests(unittest.TestCase):
         self.assertIn("reinforced concrete", construction.decision.lower())
         self.assertIn("high-albedo insulated roof", construction.decision.lower())
         self.assertIn("batch quantity takeoff", construction.decision.lower())
+
+    def test_graph_raises_when_construction_builder_environment_is_incomplete(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["weather"] = {}
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "weather.average_temp_c"):
+            design_graph.invoke(initial)
+
+    def test_graph_raises_when_construction_builder_environment_values_are_invalid(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["rainfall_mm"] = "heavy"
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(ValueError, "rainfall_mm"):
+            design_graph.invoke(initial)
 
     def test_vastu_skipped_when_disabled(self) -> None:
         req = _sample_request()
