@@ -1,20 +1,15 @@
-"""Lightweight multi-agent orchestration layer."""
+"""Multi-agent orchestration layer powered by LangGraph."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
+import logging
+from src.agents.graph import design_graph
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
+logger = logging.getLogger(__name__)
 
-@dataclass(frozen=True)
-class AgentResult:
-    name: str
-    decision: str
-    reasoning: str
-    score: float
-    weight: float
 
 
 class BaseAgent(ABC):
@@ -121,32 +116,23 @@ class ConstructionBuilderAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         return self.result("Material schedule generated with climate-adaptive specs", "Construction-ready deliverable generated", 8.3)
+class GraphExecutionError(RuntimeError):
+    """Raised when the LangGraph design workflow fails to execute."""
 
 
 class OrchestratorAgent:
-    """Coordinates specialized agents with weighted conflict resolution."""
-
-    def __init__(self) -> None:
-        self._agents: list[BaseAgent] = [
-            ArchitectAgent(),
-            MeteorologistAgent(),
-            GeologistAgent(),
-            StructuralEngineerAgent(),
-            SiteEngineerAgent(),
-            VastuExpertAgent(),
-            InteriorDesignerAgent(),
-            ConstructionBuilderAgent(),
-        ]
+    """Coordinates specialized agents via a LangGraph StateGraph workflow."""
 
     def execute(self, payload: AnalyzePlotRequest, environmental: dict) -> list[DesignDecision]:
-        results = [agent.run(payload, environmental) for agent in self._agents]
-        ordered = sorted(results, key=lambda item: item.score * item.weight, reverse=True)
-        return [
-            DesignDecision(
-                agent=result.name,
-                decision=result.decision,
-                reasoning=result.reasoning,
-                score=round(result.score * result.weight, 2),
-            )
-            for result in ordered
-        ]
+        initial_state = {
+            "payload": payload,
+            "environmental": environmental,
+            "agent_results": [],
+            "decisions": [],
+        }
+        try:
+            final_state = design_graph.invoke(initial_state)
+        except Exception as exc:
+            logger.exception("LangGraph design workflow execution failed")
+            raise GraphExecutionError("Design workflow failed to execute") from exc
+        return final_state["decisions"]
