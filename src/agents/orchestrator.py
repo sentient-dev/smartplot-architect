@@ -74,7 +74,7 @@ class MeteorologistAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        self.require_environment(environmental, ("wind","))
+        self.require_environment(environmental, ("wind",))
         direction = environmental["wind"].get("prevailing_direction", "SW")
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
@@ -89,10 +89,19 @@ class GeologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("elevation_m",))
-        elevation = environmental.get("elevation_m", 0)
+        elevation = environmental["elevation_m"]
+        if elevation < 150:
+            decision = f"Raised plinth foundation for low elevation site ({elevation}m)"
+            reasoning = "Low-lying terrain needs moisture and settlement safeguards"
+        elif elevation < 600:
+            decision = f"Reinforced strip footing for mid-elevation site ({elevation}m)"
+            reasoning = "Balanced soil pressure and drainage profile support standard reinforcement"
+        else:
+            decision = f"Stepped reinforced foundation for high elevation site ({elevation}m)"
+            reasoning = "Steeper terrain needs terrace-adaptive foundation stability"
         return self.result(
-            f"Foundation tuned for elevation {elevation}m",
-            "Reduced moisture and settlement risks",
+            decision,
+            reasoning,
             8.0,
         )
 

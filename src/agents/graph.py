@@ -78,14 +78,34 @@ def meteorologist_node(state: DesignGraphState) -> dict:
     }
 
 
+def _geologist_foundation_guidance(elevation: float) -> tuple[str, str]:
+    if elevation < 150:
+        return (
+            f"Raised plinth foundation for low elevation site ({elevation}m)",
+            "Low-lying terrain needs moisture and settlement safeguards",
+        )
+    if elevation < 600:
+        return (
+            f"Reinforced strip footing for mid-elevation site ({elevation}m)",
+            "Balanced soil pressure and drainage profile support standard reinforcement",
+        )
+    return (
+        f"Stepped reinforced foundation for high elevation site ({elevation}m)",
+        "Steeper terrain needs terrace-adaptive foundation stability",
+    )
+
+
 def geologist_node(state: DesignGraphState) -> dict:
-    elevation = state["environmental"].get("elevation_m", 0)
+    if "elevation_m" not in state["environmental"]:
+        raise KeyError("Missing environmental keys for geologist: elevation_m")
+    elevation = state["environmental"]["elevation_m"]
+    decision, reasoning = _geologist_foundation_guidance(elevation)
     return {
         "agent_results": [
             _make_result(
                 "geologist",
-                f"Foundation tuned for elevation {elevation}m",
-                "Reduced moisture and settlement risks",
+                decision,
+                reasoning,
                 8.0,
                 0.95,
             )
@@ -234,4 +254,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-
