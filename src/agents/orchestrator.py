@@ -11,6 +11,15 @@ from src.models.schemas import AnalyzePlotRequest, DesignDecision
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class AgentResult:
+    name: str
+    decision: str
+    reasoning: str
+    score: float
+    weight: float
+
+
 
 class BaseAgent(ABC):
     """Foundation contract for all SmartPlot specialist agents.
