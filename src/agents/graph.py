@@ -8,7 +8,11 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from src.agents.construction_builder import generate_construction_builder_output
+from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
+
+ELEVATION_LOW_THRESHOLD = 150.0
+ELEVATION_MID_THRESHOLD = 600.0
 
 
 # ---------------------------------------------------------------------------
@@ -50,7 +54,7 @@ def _make_result(name: str, decision: str, reasoning: str, score: float, weight:
 # ---------------------------------------------------------------------------
 
 def architect_node(state: DesignGraphState) -> dict:
-    preferred = state["environmental"].get("solar", {}).get("preferred_exposure", "south")
+    preferred = state["environmental"]["solar"]["preferred_exposure"]
     return {
         "agent_results": [
             _make_result(
@@ -65,7 +69,13 @@ def architect_node(state: DesignGraphState) -> dict:
 
 
 def meteorologist_node(state: DesignGraphState) -> dict:
-    direction = state["environmental"].get("wind", {}).get("prevailing_direction", "SW")
+    environmental = state["environmental"]
+    if "wind" not in environmental:
+        raise KeyError("Missing environmental keys for meteorologist: wind")
+    wind = environmental["wind"]
+    if "prevailing_direction" not in wind:
+        raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
+    direction = wind["prevailing_direction"]
     return {
         "agent_results": [
             _make_result(
@@ -79,14 +89,34 @@ def meteorologist_node(state: DesignGraphState) -> dict:
     }
 
 
+def geologist_foundation_guidance(elevation: float) -> tuple[str, str]:
+    if elevation < ELEVATION_LOW_THRESHOLD:
+        return (
+            f"Raised plinth foundation for low elevation site ({elevation}m)",
+            "Low-lying terrain needs moisture and settlement safeguards",
+        )
+    if elevation < ELEVATION_MID_THRESHOLD:
+        return (
+            f"Reinforced strip footing for mid-elevation site ({elevation}m)",
+            "Balanced soil pressure and drainage profile support standard reinforcement",
+        )
+    return (
+        f"Stepped reinforced foundation for high elevation site ({elevation}m)",
+        "Steeper terrain needs terrace-adaptive foundation stability",
+    )
+
+
 def geologist_node(state: DesignGraphState) -> dict:
-    elevation = state["environmental"].get("elevation_m", 0)
+    if "elevation_m" not in state["environmental"]:
+        raise KeyError("Missing environmental keys for geologist: elevation_m")
+    elevation = state["environmental"]["elevation_m"]
+    decision, reasoning = geologist_foundation_guidance(elevation)
     return {
         "agent_results": [
             _make_result(
                 "geologist",
-                f"Foundation tuned for elevation {elevation}m",
-                "Reduced moisture and settlement risks",
+                decision,
+                reasoning,
                 8.0,
                 0.95,
             )
@@ -95,13 +125,15 @@ def geologist_node(state: DesignGraphState) -> dict:
 
 
 def structural_engineer_node(state: DesignGraphState) -> dict:
+    structural = calculate_structural_decision(state["environmental"])
+
     return {
         "agent_results": [
             _make_result(
                 "structural_engineer",
-                "Load-bearing walls increased to 230mm",
-                "Safety-first structure for regional conditions",
-                8.8,
+                f"Load-bearing walls set to {structural.wall_thickness_mm}mm for regional resilience",
+                structural.reasoning,
+                structural.score,
                 1.0,
             )
         ]
@@ -131,7 +163,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
                     "vastu_expert",
                     "Vastu optional adjustments skipped",
                     "User disabled vastu preferences",
-                    7.0,
+                    0.0,
                     0.7,
                 )
             ]
@@ -141,7 +173,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
             _make_result(
                 "vastu_expert",
                 "Kitchen placed in south-east zone",
-                "Follows vastu guidance where practical",
+                "Follows tradition-based adjustments where practical",
                 7.6,
                 0.7,
             )

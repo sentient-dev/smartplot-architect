@@ -8,6 +8,7 @@ import logging
 
 from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.graph import design_graph
+from src.agents.graph import design_graph, geologist_foundation_guidance
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class ArchitectAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("solar",))
-        preferred = environmental["solar"].get("preferred_exposure", "south")
+        preferred = environmental["solar"]["preferred_exposure"]
         return self.result(
             f"Primary living spaces aligned to {preferred}",
             "Optimized for natural daylight",
@@ -77,6 +78,10 @@ class MeteorologistAgent(BaseAgent):
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("wind",))
         direction = environmental["wind"].get("prevailing_direction", "SW")
+        wind = environmental["wind"]
+        if "prevailing_direction" not in wind:
+            raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
+        direction = wind["prevailing_direction"]
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
             "Uses prevailing wind data",
@@ -90,10 +95,11 @@ class GeologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("elevation_m",))
-        elevation = environmental.get("elevation_m", 0)
+        elevation = environmental["elevation_m"]
+        decision, reasoning = geologist_foundation_guidance(elevation)
         return self.result(
-            f"Foundation tuned for elevation {elevation}m",
-            "Reduced moisture and settlement risks",
+            decision,
+            reasoning,
             8.0,
         )
 
@@ -103,10 +109,15 @@ class StructuralEngineerAgent(BaseAgent):
     weight = 1.0
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        self.require_environment(environmental, ("wind", "rainfall_mm", "elevation_m"))
+        from src.agents.structural import calculate_structural_decision
+
+        structural = calculate_structural_decision(environmental)
+
         return self.result(
-            "Load-bearing walls increased to 230mm",
-            "Safety-first structure for regional conditions",
-            8.8,
+            f"Load-bearing walls set to {structural.wall_thickness_mm}mm for regional resilience",
+            structural.reasoning,
+            structural.score,
         )
 
 
@@ -131,11 +142,11 @@ class VastuExpertAgent(BaseAgent):
             return self.result(
                 "Vastu optional adjustments skipped",
                 "User disabled vastu preferences",
-                7.0,
+                0.0,
             )
         return self.result(
             "Kitchen placed in south-east zone",
-            "Follows vastu guidance where practical",
+            "Follows tradition-based adjustments where practical",
             7.6,
         )
 
