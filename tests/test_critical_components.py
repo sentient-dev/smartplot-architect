@@ -8,10 +8,10 @@ from src.agents.orchestrator import (
     ArchitectAgent,
     BaseAgent,
     GeologistAgent,
-    GraphExecutionError,
     MeteorologistAgent,
     OrchestratorAgent,
 )
+from src.agents.orchestrator import GraphExecutionError
 from src.models.schemas import AnalyzePlotRequest, JobStatus, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
