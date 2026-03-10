@@ -7,9 +7,8 @@ from dataclasses import dataclass
 import logging
 
 from src.agents.construction_builder import generate_construction_builder_output
-from src.agents.graph import design_graph
-from src.agents.site_engineer import calculate_site_access_decision
 from src.agents.graph import design_graph, geologist_foundation_guidance
+from src.agents.site_engineer import calculate_site_access_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 logger = logging.getLogger(__name__)
@@ -78,7 +77,6 @@ class MeteorologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("wind",))
-        direction = environmental["wind"].get("prevailing_direction", "SW")
         wind = environmental["wind"]
         if "prevailing_direction" not in wind:
             raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
