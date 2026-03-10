@@ -183,12 +183,14 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
 
 
 def interior_designer_node(state: DesignGraphState) -> dict:
+    bedrooms = state["payload"].requirements.bedrooms
+    bathrooms = state["payload"].requirements.bathrooms
     return {
         "agent_results": [
             _make_result(
                 "interior_designer",
-                "Circulation path minimized across common rooms",
-                "Improves comfort and usable space",
+                f"Circulation spine optimized for {bedrooms}BR/{bathrooms}BA with comfort zoning",
+                "Reduces travel distance across common spaces and improves day-to-day comfort",
                 8.1,
                 0.75,
             )

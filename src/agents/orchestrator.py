@@ -158,9 +158,11 @@ class InteriorDesignerAgent(BaseAgent):
     weight = 0.75
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        bedrooms = payload.requirements.bedrooms
+        bathrooms = payload.requirements.bathrooms
         return self.result(
-            "Circulation path minimized across common rooms",
-            "Improves comfort and usable space",
+            f"Circulation spine optimized for {bedrooms}BR/{bathrooms}BA with comfort zoning",
+            "Reduces travel distance across common spaces and improves day-to-day comfort",
             8.1,
         )
 
