@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
 
-from src.agents.orchestrator import OrchestratorAgent
+from src.agents.orchestrator import GraphExecutionError, OrchestratorAgent
 from src.config.settings import settings
 from src.models.schemas import AnalyzePlotRequest, Coordinates, DesignResult, JobRecord, JobStatus, LocationInput, RegenerateRequest, ValidationReport
 from src.processors.design_generator import DesignProcessor
@@ -30,6 +30,17 @@ _processor = DesignProcessor()
 _jobs: dict[UUID, JobRecord] = {}
 _jobs_lock = RLock()
 _executor = ThreadPoolExecutor(max_workers=4)
+
+
+def _mark_job_failed(job_id: UUID, error: str) -> None:
+    """Update the job record to failed status with the provided error message."""
+    with _jobs_lock:
+        current = _jobs.get(job_id)
+        if not current:
+            return
+        current.status = JobStatus.failed
+        current.error = error
+        current.updated_at = datetime.now(UTC)
 
 
 def _run_pipeline(job_id: UUID) -> None:
@@ -55,22 +66,13 @@ def _run_pipeline(job_id: UUID) -> None:
             current.updated_at = datetime.now(UTC)
     except ExternalServiceError as exc:
         logger.exception("Pipeline failed due to environmental data error")
-        with _jobs_lock:
-            current = _jobs.get(job_id)
-            if not current:
-                return
-            current.status = JobStatus.failed
-            current.error = str(exc)
-            current.updated_at = datetime.now(UTC)
+        _mark_job_failed(job_id, str(exc))
+    except GraphExecutionError as exc:
+        logger.error("Pipeline failed due to agent orchestration error: %s", exc)
+        _mark_job_failed(job_id, str(exc))
     except Exception as exc:  # pragma: no cover - defensive branch
         logger.exception("Pipeline failed unexpectedly")
-        with _jobs_lock:
-            current = _jobs.get(job_id)
-            if not current:
-                return
-            current.status = JobStatus.failed
-            current.error = f"Unexpected failure: {exc}"
-            current.updated_at = datetime.now(UTC)
+        _mark_job_failed(job_id, f"Unexpected failure: {exc}")
 
 
 def _submit_pipeline(job_id: UUID) -> None:
@@ -78,13 +80,7 @@ def _submit_pipeline(job_id: UUID) -> None:
         _executor.submit(_run_pipeline, job_id)
     except RuntimeError as exc:
         logger.exception("Failed to enqueue pipeline execution")
-        with _jobs_lock:
-            job = _jobs.get(job_id)
-            if not job:
-                return
-            job.status = JobStatus.failed
-            job.error = f"Failed to enqueue job: {exc}"
-            job.updated_at = datetime.now(UTC)
+        _mark_job_failed(job_id, f"Failed to enqueue job: {exc}")
 
 
 @app.post("/api/design/analyze-plot", response_model=dict)
