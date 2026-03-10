@@ -7,6 +7,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
@@ -195,13 +196,15 @@ def interior_designer_node(state: DesignGraphState) -> dict:
 
 
 def construction_builder_node(state: DesignGraphState) -> dict:
+    decision, reasoning, score = generate_construction_builder_output(state["payload"], state["environmental"])
+
     return {
         "agent_results": [
             _make_result(
                 "construction_builder",
-                "Material schedule generated with climate-adaptive specs",
-                "Construction-ready deliverable generated",
-                8.3,
+                decision,
+                reasoning,
+                score,
                 0.9,
             )
         ]

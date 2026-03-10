@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
 
+from src.agents.construction_builder import generate_construction_builder_output
+from src.agents.graph import design_graph
 from src.agents.graph import design_graph, geologist_foundation_guidance
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
@@ -166,11 +168,9 @@ class ConstructionBuilderAgent(BaseAgent):
     weight = 0.9
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
-        return self.result(
-            "Material schedule generated with climate-adaptive specs",
-            "Construction-ready deliverable generated",
-            8.3,
-        )
+        self.require_environment(environmental, ("rainfall_mm", "weather"))
+        decision, reasoning, score = generate_construction_builder_output(payload, environmental)
+        return self.result(decision, reasoning, score)
 
 
 class GraphExecutionError(RuntimeError):
