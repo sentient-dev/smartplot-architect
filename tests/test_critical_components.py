@@ -11,10 +11,12 @@ from src.agents.orchestrator import (
     MeteorologistAgent,
     OrchestratorAgent,
 )
-from src.agents.orchestrator import GraphExecutionError
-from src.models.schemas import AnalyzePlotRequest, JobStatus, RegenerateRequest
+from src.agents.orchestrator import ArchitectAgent, BaseAgent, MeteorologistAgent, OrchestratorAgent
+from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
+from src.agents.orchestrator import GraphExecutionError
+from src.models.schemas import JobStatus
 
 
 def _sample_request() -> AnalyzePlotRequest:
@@ -411,7 +413,6 @@ class GraphExecutionErrorTests(unittest.TestCase):
         status = app_main.get_status(job_id)
         self.assertEqual(status["status"], JobStatus.failed)
         self.assertIn("workflow failed", status["error"])
-
 
 if __name__ == "__main__":
     unittest.main()
