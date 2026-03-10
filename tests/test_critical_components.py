@@ -10,8 +10,8 @@ from src.agents.orchestrator import (
     GeologistAgent,
     MeteorologistAgent,
     OrchestratorAgent,
-    StructuralEngineerAgent,
 )
+from src.agents.orchestrator import StructuralEngineerAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -198,6 +198,23 @@ class CriticalComponentTests(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "preferred_exposure"):
             ArchitectAgent().run(_sample_request(), {"solar": {}})
 
+    def test_scientific_validator_produces_report(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        decisions = OrchestratorAgent().execute(req, env)
+        report = ScientificValidator().evaluate(req, env, decisions)
+        self.assertIn(report.energy_efficiency, {"A", "B"})
+        self.assertIsInstance(report.compliant, bool)
+
+    @patch("api.main._submit_pipeline")
+    def test_analyze_plot_enqueues_pipeline_and_returns_pending(self, submit_pipeline) -> None:
+        response = app_main.analyze_plot(_sample_request())
+        job_id = UUID(response["job_id"])
+
+        self.assertEqual(response["status"], "pending")
+        submit_pipeline.assert_called_once_with(job_id)
+        self.assertEqual(app_main.get_status(job_id)["status"], "pending")
+
     def test_structural_engineer_agent_safety_first_wall_logic(self) -> None:
         req = _sample_request()
         result = StructuralEngineerAgent().run(
@@ -216,24 +233,6 @@ class CriticalComponentTests(unittest.TestCase):
         )
         self.assertIn("300mm", result.decision)
         self.assertGreaterEqual(result.score, 9.0)
-
-
-    def test_scientific_validator_produces_report(self) -> None:
-        req = _sample_request()
-        env = EnvironmentalService().fetch_environmental_profile(req.location)
-        decisions = OrchestratorAgent().execute(req, env)
-        report = ScientificValidator().evaluate(req, env, decisions)
-        self.assertIn(report.energy_efficiency, {"A", "B"})
-        self.assertIsInstance(report.compliant, bool)
-
-    @patch("api.main._submit_pipeline")
-    def test_analyze_plot_enqueues_pipeline_and_returns_pending(self, submit_pipeline) -> None:
-        response = app_main.analyze_plot(_sample_request())
-        job_id = UUID(response["job_id"])
-
-        self.assertEqual(response["status"], "pending")
-        submit_pipeline.assert_called_once_with(job_id)
-        self.assertEqual(app_main.get_status(job_id)["status"], "pending")
 
     @patch("api.main._submit_pipeline")
     def test_regenerate_resets_job_to_pending_and_requeues(self, submit_pipeline) -> None:
@@ -333,16 +332,25 @@ class LangGraphWorkflowTests(unittest.TestCase):
 
     def test_graph_requires_architect_solar_preferred_exposure(self) -> None:
         req = _sample_request()
-        env = EnvironmentalService().fetch_environmental_profile(req.location)
-        env["solar"] = {}
-        initial: DesignGraphState = {
-            "payload": req,
-            "environmental": env,
-            "agent_results": [],
-            "decisions": [],
-        }
+        with self.assertRaises(KeyError):
+            design_graph.invoke(
+                {
+                    "payload": req,
+                    "environmental": {},
+                    "agent_results": [],
+                    "decisions": [],
+                }
+            )
+
         with self.assertRaisesRegex(KeyError, "preferred_exposure"):
-            design_graph.invoke(initial)
+            design_graph.invoke(
+                {
+                    "payload": req,
+                    "environmental": {"solar": {}},
+                    "agent_results": [],
+                    "decisions": [],
+                }
+            )
 
     def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
         req = _sample_request()
@@ -382,6 +390,19 @@ class LangGraphWorkflowTests(unittest.TestCase):
         vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
         self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
         self.assertIn("skipped", vastu.decision.lower())
+
+    def test_graph_requires_geologist_elevation_data(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env.pop("elevation_m")
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "elevation_m"):
+            design_graph.invoke(initial)
 
 
 if __name__ == "__main__":

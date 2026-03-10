@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import logging
 
 from src.agents.graph import design_graph, geologist_foundation_guidance
-from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 logger = logging.getLogger(__name__)
@@ -108,6 +107,8 @@ class StructuralEngineerAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("wind", "rainfall_mm", "elevation_m"))
+        from src.agents.structural import calculate_structural_decision
+
         structural = calculate_structural_decision(environmental)
 
         return self.result(
