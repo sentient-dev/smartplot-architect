@@ -286,30 +286,6 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         self.assertEqual(agent_names, expected)
 
-    def test_orchestrator_uses_graph_internally(self) -> None:
-        req = _sample_request()
-        env = EnvironmentalService().fetch_environmental_profile(req.location)
-        decisions = OrchestratorAgent().execute(req, env)
-        self.assertEqual(len(decisions), 8)
-        self.assertGreaterEqual(decisions[0].score, decisions[-1].score)
-
-    def test_vastu_skipped_when_disabled(self) -> None:
-        req = _sample_request()
-        req = req.model_copy(
-            update={"requirements": req.requirements.model_copy(update={"apply_vastu": False})}
-        )
-        env = EnvironmentalService().fetch_environmental_profile(req.location)
-        initial: DesignGraphState = {
-            "payload": req,
-            "environmental": env,
-            "agent_results": [],
-            "decisions": [],
-        }
-        final = design_graph.invoke(initial)
-        vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
-        self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
-        self.assertIn("skipped", vastu.decision.lower())
-
     def test_graph_requires_meteorologist_prevailing_direction(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
@@ -365,6 +341,23 @@ class LangGraphWorkflowTests(unittest.TestCase):
         decisions = OrchestratorAgent().execute(req, env)
         self.assertEqual(len(decisions), 8)
         self.assertGreaterEqual(decisions[0].score, decisions[-1].score)
+
+    def test_vastu_skipped_when_disabled(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(
+            update={"requirements": req.requirements.model_copy(update={"apply_vastu": False})}
+        )
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        vastu = next((d for d in final["decisions"] if d.agent == "vastu_expert"), None)
+        self.assertIsNotNone(vastu, "Expected a decision from 'vastu_expert' agent")
+        self.assertIn("skipped", vastu.decision.lower())
 
     def test_graph_requires_geologist_elevation_data(self) -> None:
         req = _sample_request()

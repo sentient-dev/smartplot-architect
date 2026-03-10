@@ -263,4 +263,3 @@ try:
     design_graph: CompiledStateGraph = build_design_graph()
 except Exception as exc:  # pragma: no cover - defensive initialization guard
     raise RuntimeError("Failed to build design graph during module import") from exc
-
