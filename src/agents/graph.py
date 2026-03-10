@@ -7,6 +7,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
 ELEVATION_LOW_THRESHOLD = 150.0
@@ -123,13 +124,15 @@ def geologist_node(state: DesignGraphState) -> dict:
 
 
 def structural_engineer_node(state: DesignGraphState) -> dict:
+    structural = calculate_structural_decision(state["environmental"])
+
     return {
         "agent_results": [
             _make_result(
                 "structural_engineer",
-                "Load-bearing walls increased to 230mm",
-                "Safety-first structure for regional conditions",
-                8.8,
+                f"Load-bearing walls set to {structural.wall_thickness_mm}mm for regional resilience",
+                structural.reasoning,
+                structural.score,
                 1.0,
             )
         ]

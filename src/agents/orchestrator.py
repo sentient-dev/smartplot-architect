@@ -106,10 +106,15 @@ class StructuralEngineerAgent(BaseAgent):
     weight = 1.0
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        self.require_environment(environmental, ("wind", "rainfall_mm", "elevation_m"))
+        from src.agents.structural import calculate_structural_decision
+
+        structural = calculate_structural_decision(environmental)
+
         return self.result(
-            "Load-bearing walls increased to 230mm",
-            "Safety-first structure for regional conditions",
-            8.8,
+            f"Load-bearing walls set to {structural.wall_thickness_mm}mm for regional resilience",
+            structural.reasoning,
+            structural.score,
         )
 
 

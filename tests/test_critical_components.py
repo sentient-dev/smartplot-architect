@@ -216,6 +216,29 @@ class CriticalComponentTests(unittest.TestCase):
         submit_pipeline.assert_called_once_with(job_id)
         self.assertEqual(app_main.get_status(job_id)["status"], "pending")
 
+    def test_structural_engineer_agent_safety_first_wall_logic(self) -> None:
+        from src.agents.orchestrator import StructuralEngineerAgent
+
+        req = _sample_request()
+        result = StructuralEngineerAgent().run(
+            req,
+            {"wind": {"avg_speed_mps": 7.6}, "rainfall_mm": 900, "elevation_m": 220},
+        )
+        self.assertEqual(result.name, "structural_engineer")
+        self.assertIn("300mm", result.decision)
+        self.assertGreaterEqual(result.score, 9.0)
+
+    def test_structural_engineer_agent_uses_elevation_threshold(self) -> None:
+        from src.agents.orchestrator import StructuralEngineerAgent
+
+        req = _sample_request()
+        result = StructuralEngineerAgent().run(
+            req,
+            {"wind": {"avg_speed_mps": 4.0}, "rainfall_mm": 900, "elevation_m": 650},
+        )
+        self.assertIn("300mm", result.decision)
+        self.assertGreaterEqual(result.score, 9.0)
+
     @patch("api.main._submit_pipeline")
     def test_regenerate_resets_job_to_pending_and_requeues(self, submit_pipeline) -> None:
         created = app_main.analyze_plot(_sample_request())
@@ -314,7 +337,6 @@ class LangGraphWorkflowTests(unittest.TestCase):
 
     def test_graph_requires_architect_solar_preferred_exposure(self) -> None:
         req = _sample_request()
-
         with self.assertRaises(KeyError):
             design_graph.invoke(
                 {
@@ -371,6 +393,21 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(KeyError, "elevation_m"):
             design_graph.invoke(initial)
+
+    def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["rainfall_mm"] = 1700
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        structural = next((d for d in final["decisions"] if d.agent == "structural_engineer"), None)
+        self.assertIsNotNone(structural, "Expected a decision from 'structural_engineer' agent")
+        self.assertIn("300mm", structural.decision)
 
 
 if __name__ == "__main__":
