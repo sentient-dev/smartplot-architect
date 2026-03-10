@@ -75,6 +75,7 @@ class MeteorologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("wind",))
+        direction = environmental["wind"].get("prevailing_direction", "SW")
         wind = environmental["wind"]
         if "prevailing_direction" not in wind:
             raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
@@ -139,11 +140,11 @@ class VastuExpertAgent(BaseAgent):
             return self.result(
                 "Vastu optional adjustments skipped",
                 "User disabled vastu preferences",
-                7.0,
+                0.0,
             )
         return self.result(
             "Kitchen placed in south-east zone",
-            "Follows vastu guidance where practical",
+            "Follows tradition-based adjustments where practical",
             7.6,
         )
 

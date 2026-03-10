@@ -162,7 +162,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
                     "vastu_expert",
                     "Vastu optional adjustments skipped",
                     "User disabled vastu preferences",
-                    7.0,
+                    0.0,
                     0.7,
                 )
             ]
@@ -172,7 +172,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
             _make_result(
                 "vastu_expert",
                 "Kitchen placed in south-east zone",
-                "Follows vastu guidance where practical",
+                "Follows tradition-based adjustments where practical",
                 7.6,
                 0.7,
             )
