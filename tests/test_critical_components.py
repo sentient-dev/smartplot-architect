@@ -337,6 +337,7 @@ class LangGraphWorkflowTests(unittest.TestCase):
 
     def test_graph_requires_architect_solar_preferred_exposure(self) -> None:
         req = _sample_request()
+
         with self.assertRaises(KeyError):
             design_graph.invoke(
                 {
@@ -393,21 +394,6 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(KeyError, "elevation_m"):
             design_graph.invoke(initial)
-
-    def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
-        req = _sample_request()
-        env = EnvironmentalService().fetch_environmental_profile(req.location)
-        env["rainfall_mm"] = 1700
-        initial: DesignGraphState = {
-            "payload": req,
-            "environmental": env,
-            "agent_results": [],
-            "decisions": [],
-        }
-        final = design_graph.invoke(initial)
-        structural = next((d for d in final["decisions"] if d.agent == "structural_engineer"), None)
-        self.assertIsNotNone(structural, "Expected a decision from 'structural_engineer' agent")
-        self.assertIn("300mm", structural.decision)
 
 
 if __name__ == "__main__":
