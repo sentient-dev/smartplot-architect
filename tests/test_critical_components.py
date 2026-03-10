@@ -11,7 +11,7 @@ from src.agents.orchestrator import (
     MeteorologistAgent,
     OrchestratorAgent,
 )
-from src.agents.orchestrator import StructuralEngineerAgent
+from src.agents.orchestrator import ArchitectAgent, BaseAgent, MeteorologistAgent, OrchestratorAgent
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -198,6 +198,7 @@ class CriticalComponentTests(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, "preferred_exposure"):
             ArchitectAgent().run(_sample_request(), {"solar": {}})
 
+
     def test_scientific_validator_produces_report(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
@@ -216,6 +217,8 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertEqual(app_main.get_status(job_id)["status"], "pending")
 
     def test_structural_engineer_agent_safety_first_wall_logic(self) -> None:
+        from src.agents.orchestrator import StructuralEngineerAgent
+
         req = _sample_request()
         result = StructuralEngineerAgent().run(
             req,
@@ -226,6 +229,8 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertGreaterEqual(result.score, 9.0)
 
     def test_structural_engineer_agent_uses_elevation_threshold(self) -> None:
+        from src.agents.orchestrator import StructuralEngineerAgent
+
         req = _sample_request()
         result = StructuralEngineerAgent().run(
             req,
@@ -352,21 +357,6 @@ class LangGraphWorkflowTests(unittest.TestCase):
                 }
             )
 
-    def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
-        req = _sample_request()
-        env = EnvironmentalService().fetch_environmental_profile(req.location)
-        env["rainfall_mm"] = 1700
-        initial: DesignGraphState = {
-            "payload": req,
-            "environmental": env,
-            "agent_results": [],
-            "decisions": [],
-        }
-        final = design_graph.invoke(initial)
-        structural = next((d for d in final["decisions"] if d.agent == "structural_engineer"), None)
-        self.assertIsNotNone(structural, "Expected a decision from 'structural_engineer' agent")
-        self.assertIn("300mm", structural.decision)
-
     def test_orchestrator_uses_graph_internally(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
@@ -403,6 +393,21 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(KeyError, "elevation_m"):
             design_graph.invoke(initial)
+
+    def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["rainfall_mm"] = 1700
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        structural = next((d for d in final["decisions"] if d.agent == "structural_engineer"), None)
+        self.assertIsNotNone(structural, "Expected a decision from 'structural_engineer' agent")
+        self.assertIn("300mm", structural.decision)
 
 
 if __name__ == "__main__":
