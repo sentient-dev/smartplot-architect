@@ -20,9 +20,18 @@ class StructuralDecision:
 
 
 def calculate_structural_decision(environmental: dict) -> StructuralDecision:
-    wind_speed = environmental.get("wind", {}).get("avg_speed_mps", 0.0)
-    rainfall = environmental.get("rainfall_mm", 0.0)
-    elevation = environmental.get("elevation_m", 0.0)
+    try:
+        wind_speed = float(environmental.get("wind", {}).get("avg_speed_mps", 0.0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid environmental value for 'wind.avg_speed_mps'; expected a numeric value.") from exc
+    try:
+        rainfall = float(environmental.get("rainfall_mm", 0.0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid environmental value for 'rainfall_mm'; expected a numeric value.") from exc
+    try:
+        elevation = float(environmental.get("elevation_m", 0.0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid environmental value for 'elevation_m'; expected a numeric value.") from exc
 
     wall_thickness_mm = 230
     if rainfall >= MIN_RAINFALL_FOR_250MM or wind_speed >= MIN_WIND_FOR_250MM:

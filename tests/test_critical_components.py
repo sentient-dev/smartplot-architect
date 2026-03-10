@@ -408,17 +408,23 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "agent_results": [],
             "decisions": [],
         }
-        final = design_graph.invoke(initial)
-        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
-        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
-        self.assertEqual(site.decision, "Main construction gate on west edge with south-side unloading pocket")
+        with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
+            design_graph.invoke(initial)
 
     def test_graph_site_engineer_fallback_is_normalized(self) -> None:
         req = _sample_request()
         req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " NORTH-EAST "})})
         env = EnvironmentalService().fetch_environmental_profile(req.location)
-        with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
-            design_graph.invoke(initial)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
+        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
+        self.assertEqual(site.decision, "Main construction gate aligned to north-east road edge")
 
     def test_graph_requires_meteorologist_wind_section(self) -> None:
         req = _sample_request()
@@ -430,10 +436,6 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "agent_results": [],
             "decisions": [],
         }
-        final = design_graph.invoke(initial)
-        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
-        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
-        self.assertEqual(site.decision, "Main construction gate aligned to north-east road edge")
         with self.assertRaisesRegex(KeyError, "meteorologist: wind"):
             design_graph.invoke(initial)
 
