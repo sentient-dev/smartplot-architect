@@ -8,6 +8,7 @@ import logging
 
 from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.graph import design_graph
+from src.agents.site_engineer import calculate_site_access_decision
 from src.agents.graph import design_graph, geologist_foundation_guidance
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
@@ -126,9 +127,10 @@ class SiteEngineerAgent(BaseAgent):
     weight = 0.85
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
+        access_plan = calculate_site_access_decision(payload.plot.road_facing)
         return self.result(
-            f"Road-facing side set to {payload.plot.road_facing}",
-            "Supports practical site access",
+            access_plan,
+            "Supports practical site access and safe material movement",
             7.8,
         )
 

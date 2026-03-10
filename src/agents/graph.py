@@ -7,6 +7,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from src.agents.site_engineer import calculate_site_access_decision
 from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
@@ -141,13 +142,13 @@ def structural_engineer_node(state: DesignGraphState) -> dict:
 
 
 def site_engineer_node(state: DesignGraphState) -> dict:
-    road_facing = state["payload"].plot.road_facing
+    access_plan = calculate_site_access_decision(state["payload"].plot.road_facing)
     return {
         "agent_results": [
             _make_result(
                 "site_engineer",
-                f"Road-facing side set to {road_facing}",
-                "Supports practical site access",
+                access_plan,
+                "Supports practical site access and safe material movement",
                 7.8,
                 0.85,
             )

@@ -4,6 +4,7 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
+from src.agents.orchestrator import BaseAgent, OrchestratorAgent, SiteEngineerAgent
 from src.agents.orchestrator import BaseAgent, ConstructionBuilderAgent, OrchestratorAgent
 from src.agents.orchestrator import BaseAgent, OrchestratorAgent, VastuExpertAgent
 from src.agents.orchestrator import (
@@ -267,6 +268,21 @@ class CriticalComponentTests(unittest.TestCase):
         self.assertIn(report.energy_efficiency, {"A", "B"})
         self.assertIsInstance(report.compliant, bool)
 
+    def test_site_engineer_uses_road_facing_for_access_logic(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " East "})})
+        result = SiteEngineerAgent().run(req, {})
+        self.assertEqual(result.name, "site_engineer")
+        self.assertEqual(result.weight, 0.85)
+        self.assertEqual(result.score, 7.8)
+        self.assertEqual(result.decision, "Main construction gate on east edge with north-side unloading pocket")
+
+    def test_site_engineer_fallback_is_normalized(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " North-East "})})
+        result = SiteEngineerAgent().run(req, {})
+        self.assertEqual(result.decision, "Main construction gate aligned to north-east road edge")
+
     @patch("api.main._submit_pipeline")
     def test_analyze_plot_enqueues_pipeline_and_returns_pending(self, submit_pipeline) -> None:
         response = app_main.analyze_plot(_sample_request())
@@ -369,6 +385,10 @@ class LangGraphWorkflowTests(unittest.TestCase):
         }
         self.assertEqual(agent_names, expected)
 
+    def test_graph_site_engineer_decision_reflects_road_facing(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": "west"})})
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
     def test_graph_requires_meteorologist_prevailing_direction(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)
@@ -379,6 +399,15 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "agent_results": [],
             "decisions": [],
         }
+        final = design_graph.invoke(initial)
+        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
+        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
+        self.assertEqual(site.decision, "Main construction gate on west edge with south-side unloading pocket")
+
+    def test_graph_site_engineer_fallback_is_normalized(self) -> None:
+        req = _sample_request()
+        req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": " NORTH-EAST "})})
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
         with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
             design_graph.invoke(initial)
 
@@ -392,6 +421,10 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "agent_results": [],
             "decisions": [],
         }
+        final = design_graph.invoke(initial)
+        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
+        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
+        self.assertEqual(site.decision, "Main construction gate aligned to north-east road edge")
         with self.assertRaisesRegex(KeyError, "meteorologist: wind"):
             design_graph.invoke(initial)
 
