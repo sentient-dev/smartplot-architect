@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
 
-from src.agents.graph import design_graph
+from src.agents.graph import design_graph, geologist_foundation_guidance
 from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
 
@@ -62,7 +62,7 @@ class ArchitectAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("solar",))
-        preferred = environmental["solar"].get("preferred_exposure", "south")
+        preferred = environmental["solar"]["preferred_exposure"]
         return self.result(
             f"Primary living spaces aligned to {preferred}",
             "Optimized for natural daylight",
@@ -76,7 +76,10 @@ class MeteorologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("wind",))
-        direction = environmental["wind"].get("prevailing_direction", "SW")
+        wind = environmental["wind"]
+        if "prevailing_direction" not in wind:
+            raise KeyError("Missing environmental keys for meteorologist: wind.prevailing_direction")
+        direction = wind["prevailing_direction"]
         return self.result(
             f"Cross-ventilation windows oriented towards {direction}",
             "Uses prevailing wind data",
@@ -90,10 +93,11 @@ class GeologistAgent(BaseAgent):
 
     def run(self, payload: AnalyzePlotRequest, environmental: dict) -> AgentResult:
         self.require_environment(environmental, ("elevation_m",))
-        elevation = environmental.get("elevation_m", 0)
+        elevation = environmental["elevation_m"]
+        decision, reasoning = geologist_foundation_guidance(elevation)
         return self.result(
-            f"Foundation tuned for elevation {elevation}m",
-            "Reduced moisture and settlement risks",
+            decision,
+            reasoning,
             8.0,
         )
 

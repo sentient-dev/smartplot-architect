@@ -4,7 +4,14 @@ from uuid import UUID
 
 import api.main as app_main
 from src.agents.graph import DesignGraphState, build_design_graph, design_graph
-from src.agents.orchestrator import BaseAgent, OrchestratorAgent, StructuralEngineerAgent
+from src.agents.orchestrator import (
+    ArchitectAgent,
+    BaseAgent,
+    GeologistAgent,
+    MeteorologistAgent,
+    OrchestratorAgent,
+    StructuralEngineerAgent,
+)
 from src.models.schemas import AnalyzePlotRequest, RegenerateRequest
 from src.services.environmental import EnvironmentalService
 from src.validators.scientific import ScientificValidator
@@ -141,6 +148,56 @@ class CriticalComponentTests(unittest.TestCase):
         result = EnvAwareAgent().run(_sample_request(), {"solar": {}, "wind": {}})
         self.assertEqual(result.name, "env-aware")
 
+    def test_geologist_agent_requires_elevation(self) -> None:
+        with self.assertRaisesRegex(KeyError, "elevation_m"):
+            GeologistAgent().run(_sample_request(), {"solar": {}, "wind": {}})
+
+    def test_geologist_agent_elevation_logic_is_deterministic(self) -> None:
+        payload = _sample_request()
+        low = GeologistAgent().run(payload, {"elevation_m": 120})
+        mid = GeologistAgent().run(payload, {"elevation_m": 320})
+        high = GeologistAgent().run(payload, {"elevation_m": 720})
+
+        self.assertIn("Raised plinth foundation", low.decision)
+        self.assertIn("Reinforced strip footing", mid.decision)
+        self.assertIn("Stepped reinforced foundation", high.decision)
+        self.assertEqual(low.score, 8.0)
+        self.assertEqual(mid.score, 8.0)
+        self.assertEqual(high.score, 8.0)
+
+    def test_meteorologist_agent_requires_wind_environment_key(self) -> None:
+        with self.assertRaises(KeyError):
+            MeteorologistAgent().run(_sample_request(), {"solar": {}})
+
+    def test_meteorologist_agent_uses_prevailing_wind_direction(self) -> None:
+        result = MeteorologistAgent().run(
+            _sample_request(),
+            {"wind": {"prevailing_direction": "NE"}},
+        )
+        self.assertEqual(result.name, "meteorologist")
+        self.assertEqual(result.weight, 0.9)
+        self.assertIn("NE", result.decision)
+
+    def test_meteorologist_agent_requires_prevailing_direction(self) -> None:
+        with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
+            MeteorologistAgent().run(_sample_request(), {"wind": {"avg_speed_mps": 4.2}})
+
+    def test_architect_agent_uses_solar_preferred_exposure(self) -> None:
+        result = ArchitectAgent().run(
+            _sample_request(),
+            {"solar": {"preferred_exposure": "east"}},
+        )
+        self.assertEqual(result.name, "architect")
+        self.assertEqual(result.weight, 1.0)
+        self.assertIn("east", result.decision.lower())
+
+    def test_architect_agent_requires_solar_data(self) -> None:
+        with self.assertRaises(KeyError):
+            ArchitectAgent().run(_sample_request(), {})
+
+        with self.assertRaisesRegex(KeyError, "preferred_exposure"):
+            ArchitectAgent().run(_sample_request(), {"solar": {}})
+
     def test_structural_engineer_agent_safety_first_wall_logic(self) -> None:
         req = _sample_request()
         result = StructuralEngineerAgent().run(
@@ -247,6 +304,45 @@ class LangGraphWorkflowTests(unittest.TestCase):
             "site_engineer", "vastu_expert", "interior_designer", "construction_builder",
         }
         self.assertEqual(agent_names, expected)
+
+    def test_graph_requires_meteorologist_prevailing_direction(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["wind"] = {"avg_speed_mps": env["wind"]["avg_speed_mps"]}
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "wind\\.prevailing_direction"):
+            design_graph.invoke(initial)
+
+    def test_graph_requires_meteorologist_wind_section(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env.pop("wind")
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "meteorologist: wind"):
+            design_graph.invoke(initial)
+
+    def test_graph_requires_architect_solar_preferred_exposure(self) -> None:
+        req = _sample_request()
+        env = EnvironmentalService().fetch_environmental_profile(req.location)
+        env["solar"] = {}
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        with self.assertRaisesRegex(KeyError, "preferred_exposure"):
+            design_graph.invoke(initial)
 
     def test_graph_structural_engineer_decision_uses_regional_profile(self) -> None:
         req = _sample_request()
