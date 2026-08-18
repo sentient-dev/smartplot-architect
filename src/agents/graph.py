@@ -11,6 +11,7 @@ from src.agents.site_engineer import calculate_site_access_decision
 from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.structural import calculate_structural_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
+from src.utils.knowledge import load_vastu_rules
 
 ELEVATION_LOW_THRESHOLD = 150.0
 ELEVATION_MID_THRESHOLD = 600.0
@@ -174,7 +175,7 @@ def vastu_expert_node(state: DesignGraphState) -> dict:
             _make_result(
                 "vastu_expert",
                 "Kitchen placed in south-east zone",
-                "Follows tradition-based adjustments where practical",
+                f"Follows tradition-based adjustments where practical ({load_vastu_rules().get('kitchen', 'Prefer south-east placement')})",
                 7.6,
                 0.7,
             )

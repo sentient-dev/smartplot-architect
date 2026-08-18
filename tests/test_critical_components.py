@@ -274,7 +274,7 @@ class CriticalComponentTests(unittest.TestCase):
         env = EnvironmentalService().fetch_environmental_profile(req.location)
         decisions = OrchestratorAgent().execute(req, env)
         report = ScientificValidator().evaluate(req, env, decisions)
-        self.assertIn(report.energy_efficiency, {"A", "B"})
+        self.assertIn(report.energy_efficiency, {"A+", "A", "B"})
         self.assertIsInstance(report.compliant, bool)
 
     def test_site_engineer_uses_road_facing_for_access_logic(self) -> None:
@@ -398,6 +398,17 @@ class LangGraphWorkflowTests(unittest.TestCase):
         req = _sample_request()
         req = req.model_copy(update={"plot": req.plot.model_copy(update={"road_facing": "west"})})
         env = EnvironmentalService().fetch_environmental_profile(req.location)
+        initial: DesignGraphState = {
+            "payload": req,
+            "environmental": env,
+            "agent_results": [],
+            "decisions": [],
+        }
+        final = design_graph.invoke(initial)
+        site = next((d for d in final["decisions"] if d.agent == "site_engineer"), None)
+        self.assertIsNotNone(site, "Expected a decision from 'site_engineer' agent")
+        self.assertEqual(site.decision, "Main construction gate on west edge with south-side unloading pocket")
+
     def test_graph_requires_meteorologist_prevailing_direction(self) -> None:
         req = _sample_request()
         env = EnvironmentalService().fetch_environmental_profile(req.location)

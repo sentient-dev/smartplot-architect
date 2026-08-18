@@ -1,0 +1,21 @@
+{
+  "location": {
+    "address": "123 Main St, Bangalore, India",
+    "coordinates": {"lat": 12.9716, "lon": 77.5946}
+  },
+  "plot": {
+    "dimensions": {"length": 30, "width": 50, "unit": "feet"},
+    "orientation": "north",
+    "road_facing": "east"
+  },
+  "requirements": {
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "kitchen": 1,
+    "living_room": 1,
+    "dining_room": 1,
+    "budget": "mid-range",
+    "style": "modern",
+    "apply_vastu": true
+  }
+}

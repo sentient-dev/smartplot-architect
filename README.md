@@ -59,6 +59,22 @@ pip install -r requirements.txt
 uvicorn api.main:app --reload
 ```
 
+## Example input → output
+```bash
+python examples/run_sample.py
+```
+
+This runs the Bangalore sample in `examples/sample_input.json` through the full pipeline and writes floor-plan SVG/DXF, glTF, PDF, sun/ventilation drawings, and a BOM under `artifacts/`.
+
+With the API running:
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/design/analyze-plot \
+  -H 'Content-Type: application/json' \
+  --data @examples/sample_input.json
+```
+
+Then poll `/api/design/{job_id}/status` and fetch `/api/design/{job_id}/result`. Artifact URLs are served from `/artifacts/...`.
+
 ## API endpoints
 - `POST /api/design/analyze-plot`
 - `GET /api/design/{job_id}/status`

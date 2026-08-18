@@ -10,6 +10,7 @@ from src.agents.construction_builder import generate_construction_builder_output
 from src.agents.graph import design_graph, geologist_foundation_guidance
 from src.agents.site_engineer import calculate_site_access_decision
 from src.models.schemas import AnalyzePlotRequest, DesignDecision
+from src.utils.knowledge import load_vastu_rules
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +145,10 @@ class VastuExpertAgent(BaseAgent):
                 "User disabled vastu preferences",
                 0.0,
             )
+        kitchen_rule = load_vastu_rules().get("kitchen", "Prefer south-east placement")
         return self.result(
             "Kitchen placed in south-east zone",
-            "Follows tradition-based adjustments where practical",
+            f"Follows tradition-based adjustments where practical ({kitchen_rule})",
             7.6,
         )
 
@@ -193,5 +195,5 @@ class OrchestratorAgent:
             final_state = design_graph.invoke(initial_state)
         except Exception as exc:
             logger.exception("LangGraph design workflow execution failed")
-            raise GraphExecutionError("Design workflow failed to execute") from exc
+            raise GraphExecutionError(f"Design workflow failed to execute: {exc}") from exc
         return final_state["decisions"]
