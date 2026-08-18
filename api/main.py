@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from pathlib import Path
 from threading import RLock
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from src.agents.orchestrator import GraphExecutionError, OrchestratorAgent
 from src.config.settings import settings
@@ -22,6 +24,10 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
+
+_artifacts_dir = Path(settings.artifacts_dir)
+_artifacts_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/artifacts", StaticFiles(directory=_artifacts_dir), name="artifacts")
 
 _environmental = EnvironmentalService()
 _orchestrator = OrchestratorAgent()
@@ -56,12 +62,18 @@ def _run_pipeline(job_id: UUID) -> None:
         environmental = _environmental.fetch_environmental_profile(request.location)
         decisions = _orchestrator.execute(request, environmental)
         validation: ValidationReport = _validator.evaluate(request, environmental, decisions)
-        files, summary = _processor.build_outputs(request, decisions, validation.structural_score)
+        design_id, files, summary = _processor.build_outputs(request, decisions, validation, environmental)
         with _jobs_lock:
             current = _jobs.get(job_id)
             if not current:
                 return
-            current.result = DesignResult(files=files, summary=summary, design_decisions=decisions, validation=validation)
+            current.result = DesignResult(
+                design_id=design_id,
+                files=files,
+                summary=summary,
+                design_decisions=decisions,
+                validation=validation,
+            )
             current.status = JobStatus.completed
             current.updated_at = datetime.now(UTC)
     except ExternalServiceError as exc:
